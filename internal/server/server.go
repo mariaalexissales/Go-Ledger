@@ -3,12 +3,14 @@ package server
 import (
 	"context"
 	"errors"
-	"strings"
+	"net/url"
 
 	"github.com/golang-migrate/migrate/v4"
 	_ "github.com/golang-migrate/migrate/v4/database/pgx/v5"
-	_ "github.com/golang-migrate/migrate/v4/source/file"
+	"github.com/golang-migrate/migrate/v4/source/iofs"
 	"github.com/jackc/pgx/v5/pgxpool"
+
+	"go-ledger/internal/db/migrations"
 )
 
 func Connect(ctx context.Context, connStr string) (*pgxpool.Pool, error) {
@@ -16,9 +18,18 @@ func Connect(ctx context.Context, connStr string) (*pgxpool.Pool, error) {
 }
 
 func RunMigrations(connStr string) error {
-	migrateURL := strings.Replace(connStr, "postgres://", "pgx5://", 1)
+	u, err := url.Parse(connStr)
+	if err != nil {
+		return err
+	}
+	u.Scheme = "pgx5"
 
-	m, err := migrate.New("file://internal/db/migrations", migrateURL)
+	src, err := iofs.New(migrations.FS, ".")
+	if err != nil {
+		return err
+	}
+
+	m, err := migrate.NewWithSourceInstance("iofs", src, u.String())
 	if err != nil {
 		return err
 	}
