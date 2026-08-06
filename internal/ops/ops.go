@@ -5,5 +5,5 @@ import "net/http"
 
 func SecurityLogger(next http.Handler) http.Handler {
 	// TODO: Create Layer 3 using goroutines
-	return nil
+	return next
 }

@@ -2,9 +2,13 @@ package main
 
 import (
 	"context"
+	"errors"
 	"log"
+	"net/http"
 	"os"
+	"os/signal"
 	"slices"
+	"syscall"
 	"time"
 
 	"github.com/joho/godotenv"
@@ -73,6 +77,34 @@ func main() {
 		return
 	}
 
-	// TODO: Layer 2 - wire api.NewRouter(pool) up to a net/http listener
-	api.NewRouter(pool)
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8080"
+	}
+
+	srv := &http.Server{
+		Addr:    ":" + port,
+		Handler: api.NewRouter(pool),
+	}
+
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer stop()
+
+	go func() {
+		log.Printf("Listening on :%s", port)
+		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			log.Fatalf("Server error: %v", err)
+		}
+	}()
+
+	<-ctx.Done()
+	stop()
+
+	log.Println("Shutting down server")
+	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer shutdownCancel()
+
+	if err := srv.Shutdown(shutdownCtx); err != nil {
+		log.Fatalf("Server forced to shutdown: %v", err)
+	}
 }
