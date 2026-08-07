@@ -19,37 +19,38 @@ func (a *API) createAccount(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var account Account
+	var acc Account
 
 	err := a.DB.QueryRow(r.Context(), `
 		INSERT INTO accounts (name)
 		VALUES ($1)
 		RETURNING id, name, balance
-	`, req.Name).Scan(&account.ID, &account.Name, &account.Balance)
+	`, req.Name).Scan(&acc.ID, &acc.Name, &acc.Balance)
 	
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to create account")
 		return
 	}
 
-	writeJSON(w, http.StatusCreated, account)
+	writeJSON(w, http.StatusCreated, acc)
 }
 
 // GET: Get Account /{id}
 func (a *API) getAccount(w http.ResponseWriter, r *http.Request) {
 	id, err := strconv.Atoi(chi.URLParam(r, "id"))
+	
 	if err != nil {
 		writeError(w, http.StatusBadRequest, "invalid account id")
 		return
 	}
 
-	var account Account
+	var acc Account
 
 	err = a.DB.QueryRow(r.Context(), `
 		SELECT id, name, balance
 		FROM accounts
 		WHERE id = $1
-	`, id).Scan(&account.ID, &account.Name, &account.Balance)
+	`, id).Scan(&acc.ID, &acc.Name, &acc.Balance)
 	
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -60,7 +61,7 @@ func (a *API) getAccount(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	writeJSON(w, http.StatusOK, account)
+	writeJSON(w, http.StatusOK, acc)
 }
 
 // DELETE: Delete Account /{id}
