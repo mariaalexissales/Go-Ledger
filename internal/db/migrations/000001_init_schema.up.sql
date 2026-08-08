@@ -1,21 +1,21 @@
-CREATE TABLE accounts (
+CREATE TABLE IF NOT EXISTS accounts (
     id SERIAL PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
     balance NUMERIC(15, 2) NOT NULL DEFAULT 0.00,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE transactions (
+CREATE TABLE IF NOT EXISTS transactions (
     id SERIAL PRIMARY KEY,
     account_id INT REFERENCES accounts(id) ON DELETE CASCADE,
     amount NUMERIC(15, 2) NOT NULL,
     timestamp TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE security_events (
+CREATE TABLE IF NOT EXISTS security_events (
     id SERIAL PRIMARY KEY,
     timestamp TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     ip_address VARCHAR(45) NOT NULL,
     action_type VARCHAR(100) NOT NULL,
-    flag_status BOOLEAN NOT NULL DEFAULT FALSE 
-}
+    flag_status VARCHAR(20) NOT NULL 
+);
