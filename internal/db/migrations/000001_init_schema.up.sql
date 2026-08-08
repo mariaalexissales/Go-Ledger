@@ -11,3 +11,11 @@ CREATE TABLE transactions (
     amount NUMERIC(15, 2) NOT NULL,
     timestamp TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
+
+CREATE TABLE security_events (
+    id SERIAL PRIMARY KEY,
+    timestamp TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    ip_address VARCHAR(45) NOT NULL,
+    action_type VARCHAR(100) NOT NULL,
+    flag_status BOOLEAN NOT NULL DEFAULT FALSE 
+}

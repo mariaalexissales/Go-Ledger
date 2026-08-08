@@ -13,7 +13,7 @@ func NewRouter(pool *pgxpool.Pool) http.Handler {
 	a := &API{DB: pool}
 
 	r := chi.NewRouter()
-	r.Use(ops.SecurityLogger)
+	r.Use(ops.NewSecurityGuard(pool, ops.NewRateLimiter()).SecurityLogger)
 
 	r.Get("/health", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
