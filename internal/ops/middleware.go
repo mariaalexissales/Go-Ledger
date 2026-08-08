@@ -43,7 +43,7 @@ func (sg *SecurityGuard) SecurityLogger(next http.Handler) http.Handler {
 
 func (sg *SecurityGuard) logSecurityEvent(ip, actionType, flagStatus string) {
 	query := `
-		INSERT INTO security_events (ip, action_type, flag_status, created_at)
+		INSERT INTO security_events (ip_address, action_type, flag_status, timestamp)
 		VALUES ($1, $2, $3, NOW())
 	`
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
