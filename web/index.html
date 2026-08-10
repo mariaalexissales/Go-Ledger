@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Ledger API console with a live security event feed and attack scenario demos." />
+    <title>go-ledger console</title>
+    <meta name="color-scheme" content="dark light" />
+    <script>
+      // Stamps the color-scheme class before the bundle parses. Without it a
+      // near-black app flashes a white viewport on every cold load. That is
+      // worst on Pages, where booting the JS is the slowest part of the page.
+      //
+      // This has to reach the same answer as ThemeProvider in main.tsx or the
+      // page repaints once React mounts: same 'mui-mode' key, same 'dark'
+      // default. The 'system' branch stays because a visitor may still have
+      // that value persisted from before dark became the default.
+      (function () {
+        try {
+          var mode = localStorage.getItem('mui-mode') || 'dark'
+          var scheme =
+            mode === 'system'
+              ? matchMedia('(prefers-color-scheme: light)').matches
+                ? 'light'
+                : 'dark'
+              : mode
+          document.documentElement.classList.add(scheme)
+        } catch (e) {
+          document.documentElement.classList.add('dark')
+        }
+      })()
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
