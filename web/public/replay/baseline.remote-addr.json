@@ -1,0 +1,304 @@
+{
+ "scenario_id": "baseline",
+ "client_ip_mode": "remote-addr",
+ "recorded_at": "2026-08-08T22:49:14.4013571Z",
+ "result": {
+  "client_ip_mode": "remote-addr",
+  "finished_at": "2026-08-08T17:49:13.9001666-05:00",
+  "rate_limit": 30,
+  "rate_window": "10s",
+  "scenario_id": "baseline",
+  "started_at": "2026-08-08T17:49:13.141047-05:00",
+  "steps": [
+   {
+    "blocked": false,
+    "client_ip": "",
+    "duration_ms": 0,
+    "elapsed_ms": 0,
+    "method": "",
+    "note": "Four clients, three requests each, spaced like real browsing.",
+    "path": "",
+    "retry_after_sec": 0,
+    "seq": 1,
+    "spoofed": false,
+    "status": 0
+   },
+   {
+    "blocked": false,
+    "client_ip": "198.51.100.11",
+    "duration_ms": 1,
+    "elapsed_ms": 0,
+    "method": "GET",
+    "path": "/api/accounts/1",
+    "retry_after_sec": 0,
+    "seq": 2,
+    "spoofed": false,
+    "status": 200
+   },
+   {
+    "blocked": false,
+    "client_ip": "198.51.100.12",
+    "duration_ms": 0,
+    "elapsed_ms": 1,
+    "method": "GET",
+    "path": "/api/accounts/2",
+    "retry_after_sec": 0,
+    "seq": 3,
+    "spoofed": false,
+    "status": 200
+   },
+   {
+    "blocked": false,
+    "client_ip": "198.51.100.13",
+    "duration_ms": 0,
+    "elapsed_ms": 1,
+    "method": "GET",
+    "path": "/api/accounts/3",
+    "retry_after_sec": 0,
+    "seq": 4,
+    "spoofed": false,
+    "status": 200
+   },
+   {
+    "blocked": false,
+    "client_ip": "198.51.100.14",
+    "duration_ms": 0,
+    "elapsed_ms": 2,
+    "method": "GET",
+    "path": "/api/accounts/4",
+    "retry_after_sec": 0,
+    "seq": 5,
+    "spoofed": false,
+    "status": 200
+   },
+   {
+    "blocked": false,
+    "client_ip": "198.51.100.11",
+    "duration_ms": 1,
+    "elapsed_ms": 252,
+    "method": "GET",
+    "path": "/api/accounts/1",
+    "retry_after_sec": 0,
+    "seq": 6,
+    "spoofed": false,
+    "status": 200
+   },
+   {
+    "blocked": false,
+    "client_ip": "198.51.100.12",
+    "duration_ms": 0,
+    "elapsed_ms": 254,
+    "method": "GET",
+    "path": "/api/accounts/2",
+    "retry_after_sec": 0,
+    "seq": 7,
+    "spoofed": false,
+    "status": 200
+   },
+   {
+    "blocked": false,
+    "client_ip": "198.51.100.13",
+    "duration_ms": 0,
+    "elapsed_ms": 254,
+    "method": "GET",
+    "path": "/api/accounts/3",
+    "retry_after_sec": 0,
+    "seq": 8,
+    "spoofed": false,
+    "status": 200
+   },
+   {
+    "blocked": false,
+    "client_ip": "198.51.100.14",
+    "duration_ms": 0,
+    "elapsed_ms": 255,
+    "method": "GET",
+    "path": "/api/accounts/4",
+    "retry_after_sec": 0,
+    "seq": 9,
+    "spoofed": false,
+    "status": 200
+   },
+   {
+    "blocked": false,
+    "client_ip": "198.51.100.11",
+    "duration_ms": 1,
+    "elapsed_ms": 506,
+    "method": "GET",
+    "path": "/api/accounts/1",
+    "retry_after_sec": 0,
+    "seq": 10,
+    "spoofed": false,
+    "status": 200
+   },
+   {
+    "blocked": false,
+    "client_ip": "198.51.100.12",
+    "duration_ms": 0,
+    "elapsed_ms": 507,
+    "method": "GET",
+    "path": "/api/accounts/2",
+    "retry_after_sec": 0,
+    "seq": 11,
+    "spoofed": false,
+    "status": 200
+   },
+   {
+    "blocked": false,
+    "client_ip": "198.51.100.13",
+    "duration_ms": 0,
+    "elapsed_ms": 507,
+    "method": "GET",
+    "path": "/api/accounts/3",
+    "retry_after_sec": 0,
+    "seq": 12,
+    "spoofed": false,
+    "status": 200
+   },
+   {
+    "blocked": false,
+    "client_ip": "198.51.100.14",
+    "duration_ms": 0,
+    "elapsed_ms": 508,
+    "method": "GET",
+    "path": "/api/accounts/4",
+    "retry_after_sec": 0,
+    "seq": 13,
+    "spoofed": false,
+    "status": 200
+   }
+  ],
+  "summary": {
+   "allowed": 12,
+   "blocked": 0,
+   "distinct_ips": 4,
+   "duration_ms": 759,
+   "errors": 0,
+   "sent": 12,
+   "verdict": "12 requests from 4 source IPs, 0 blocked. Normal traffic, nothing tripped."
+  },
+  "teaches": "What a healthy log looks like. Every scenario after this one should be read against it."
+ },
+ "events": [
+  {
+   "action_type": "GET /api/accounts/1",
+   "blocked": false,
+   "flag_status": "ALLOWED",
+   "id": 1,
+   "ip_address": "198.51.100.11",
+   "method": "GET",
+   "path": "/api/accounts/1",
+   "timestamp": "2026-08-08T17:49:13.141547-05:00"
+  },
+  {
+   "action_type": "GET /api/accounts/2",
+   "blocked": false,
+   "flag_status": "ALLOWED",
+   "id": 2,
+   "ip_address": "198.51.100.12",
+   "method": "GET",
+   "path": "/api/accounts/2",
+   "timestamp": "2026-08-08T17:49:13.142047-05:00"
+  },
+  {
+   "action_type": "GET /api/accounts/3",
+   "blocked": false,
+   "flag_status": "ALLOWED",
+   "id": 3,
+   "ip_address": "198.51.100.13",
+   "method": "GET",
+   "path": "/api/accounts/3",
+   "timestamp": "2026-08-08T17:49:13.142547-05:00"
+  },
+  {
+   "action_type": "GET /api/accounts/4",
+   "blocked": false,
+   "flag_status": "ALLOWED",
+   "id": 4,
+   "ip_address": "198.51.100.14",
+   "method": "GET",
+   "path": "/api/accounts/4",
+   "timestamp": "2026-08-08T17:49:13.14305-05:00"
+  },
+  {
+   "action_type": "GET /api/accounts/1",
+   "blocked": false,
+   "flag_status": "ALLOWED",
+   "id": 5,
+   "ip_address": "198.51.100.11",
+   "method": "GET",
+   "path": "/api/accounts/1",
+   "timestamp": "2026-08-08T17:49:13.394553-05:00"
+  },
+  {
+   "action_type": "GET /api/accounts/2",
+   "blocked": false,
+   "flag_status": "ALLOWED",
+   "id": 6,
+   "ip_address": "198.51.100.12",
+   "method": "GET",
+   "path": "/api/accounts/2",
+   "timestamp": "2026-08-08T17:49:13.395552-05:00"
+  },
+  {
+   "action_type": "GET /api/accounts/3",
+   "blocked": false,
+   "flag_status": "ALLOWED",
+   "id": 7,
+   "ip_address": "198.51.100.13",
+   "method": "GET",
+   "path": "/api/accounts/3",
+   "timestamp": "2026-08-08T17:49:13.396051-05:00"
+  },
+  {
+   "action_type": "GET /api/accounts/4",
+   "blocked": false,
+   "flag_status": "ALLOWED",
+   "id": 8,
+   "ip_address": "198.51.100.14",
+   "method": "GET",
+   "path": "/api/accounts/4",
+   "timestamp": "2026-08-08T17:49:13.396554-05:00"
+  },
+  {
+   "action_type": "GET /api/accounts/1",
+   "blocked": false,
+   "flag_status": "ALLOWED",
+   "id": 9,
+   "ip_address": "198.51.100.11",
+   "method": "GET",
+   "path": "/api/accounts/1",
+   "timestamp": "2026-08-08T17:49:13.647162-05:00"
+  },
+  {
+   "action_type": "GET /api/accounts/2",
+   "blocked": false,
+   "flag_status": "ALLOWED",
+   "id": 10,
+   "ip_address": "198.51.100.12",
+   "method": "GET",
+   "path": "/api/accounts/2",
+   "timestamp": "2026-08-08T17:49:13.648163-05:00"
+  },
+  {
+   "action_type": "GET /api/accounts/3",
+   "blocked": false,
+   "flag_status": "ALLOWED",
+   "id": 11,
+   "ip_address": "198.51.100.13",
+   "method": "GET",
+   "path": "/api/accounts/3",
+   "timestamp": "2026-08-08T17:49:13.648663-05:00"
+  },
+  {
+   "action_type": "GET /api/accounts/4",
+   "blocked": false,
+   "flag_status": "ALLOWED",
+   "id": 12,
+   "ip_address": "198.51.100.14",
+   "method": "GET",
+   "path": "/api/accounts/4",
+   "timestamp": "2026-08-08T17:49:13.649162-05:00"
+  }
+ ]
+}
