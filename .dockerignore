@@ -1,0 +1,18 @@
+.git
+.gitignore
+.gitattributes
+.env
+README.md
+
+# Hundreds of MB of build context otherwise.
+**/node_modules
+web/dist
+internal/spa/dist
+
+bin/
+*.exe
+*.exe~
+*.test
+*.out
+Dockerfile
+.dockerignore
