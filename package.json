@@ -1,0 +1,27 @@
+{
+  "name": "go-ledger",
+  "private": true,
+  "description": "Task runner for the Go API and the React console. npm scripts rather than a Makefile, because make is not installed on Windows by default and Node already is.",
+  "scripts": {
+    "dev": "concurrently -n api,web -c green,cyan \"npm:dev:api\" \"npm:dev:web\"",
+    "dev:api": "go run ./cmd/server",
+    "dev:web": "npm --prefix web run dev",
+    "db:up": "docker compose up -d db",
+    "db:down": "docker compose stop db",
+    "seed": "go run ./cmd/server seed",
+    "reset": "go run ./cmd/server reset",
+    "build": "npm --prefix web run build && go build -tags embed_spa -o bin/server ./cmd/server",
+    "typecheck": "npm --prefix web run typecheck",
+    "test": "go test ./... && npm --prefix web run test",
+    "test:race": "go test ./... -race",
+    "lint": "gofmt -l cmd internal && go vet ./...",
+    "up": "docker compose up --build -d",
+    "down": "docker compose down",
+    "record": "go run ./cmd/record",
+    "build:pages": "npm --prefix web run build:pages",
+    "preview:pages": "npm --prefix web run preview:pages"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  }
+}
