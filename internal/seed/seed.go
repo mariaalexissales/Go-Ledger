@@ -8,7 +8,6 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-
 func Reset(ctx context.Context, pool *pgxpool.Pool) error {
 	if _, err := pool.Exec(ctx, "TRUNCATE accounts, transactions RESTART IDENTITY CASCADE"); err != nil {
 		return fmt.Errorf("failed to reset accounts/transactions: %w", err)
@@ -17,8 +16,13 @@ func Reset(ctx context.Context, pool *pgxpool.Pool) error {
 	return nil
 }
 
+// Run fills an empty database with fake accounts and transactions. It is a no-op
+// when any account already exists.
+func Run(ctx context.Context, pool *pgxpool.Pool, fakeSeed uint64) error {
+	if fakeSeed != 0 {
+		gofakeit.GlobalFaker = gofakeit.New(fakeSeed)
+	}
 
-func Run(ctx context.Context, pool *pgxpool.Pool) error {
 	var count int
 	if err := pool.QueryRow(ctx, "SELECT count(*) FROM accounts").Scan(&count); err != nil {
 		return fmt.Errorf("failed to check existing account count: %w", err)

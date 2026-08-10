@@ -7,8 +7,65 @@ import (
 	"strconv"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/jackc/pgerrcode"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 )
+
+// GET: List transactions /transactions?limit=&offset=&account_id=
+func (a *API) listTransactions(w http.ResponseWriter, r *http.Request) {
+	a.writeTransactionPage(w, r, optionalIntParam(r, "account_id"))
+}
+
+// GET: List one account's transactions /accounts/{id}/transactions
+func (a *API) listAccountTransactions(w http.ResponseWriter, r *http.Request) {
+	id, err := strconv.Atoi(chi.URLParam(r, "id"))
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "invalid account id")
+		return
+	}
+
+	a.writeTransactionPage(w, r, &id)
+}
+
+// writeTransactionPage backs both transaction list endpoints. A nil accountID
+// means "no filter".
+func (a *API) writeTransactionPage(w http.ResponseWriter, r *http.Request, accountID *int) {
+	page := parsePageParams(r)
+
+	rows, err := a.DB.Query(r.Context(), `
+		SELECT id, account_id, amount, timestamp, COUNT(*) OVER() AS total
+		FROM transactions
+		WHERE ($1::int IS NULL OR account_id = $1::int)
+		ORDER BY timestamp DESC, id DESC
+		LIMIT $2 OFFSET $3
+	`, accountID, page.Limit, page.Offset)
+
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to list transactions")
+		return
+	}
+	defer rows.Close()
+
+	transactions := make([]Transaction, 0, page.Limit)
+	total := 0
+
+	for rows.Next() {
+		var txn Transaction
+		if err := rows.Scan(&txn.ID, &txn.AccountID, &txn.Amount, &txn.Timestamp, &total); err != nil {
+			writeError(w, http.StatusInternalServerError, "failed to list transactions")
+			return
+		}
+		transactions = append(transactions, txn)
+	}
+
+	if rows.Err() != nil {
+		writeError(w, http.StatusInternalServerError, "failed to list transactions")
+		return
+	}
+
+	writeList(w, transactions, total, page)
+}
 
 // POST /transactions.
 func (a *API) createTransaction(w http.ResponseWriter, r *http.Request) {
@@ -37,21 +94,31 @@ func (a *API) createTransaction(w http.ResponseWriter, r *http.Request) {
 			WHERE id = $2
 		`,
 			req.Amount, req.AccountID)
-		
+
 		if err != nil {
 			return err
 		}
 
 		if cmdTag.RowsAffected() == 0 {
-			return pgx.ErrNoRows
+			return errAccountNotFound
 		}
 		return nil
 	})
 	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			writeError(w, http.StatusNotFound, "transaction not found")
+		// A bad account_id trips the transactions.account_id foreign key on the
+		// INSERT, before the balance UPDATE ever runs, so the FK violation is
+		// the path that actually fires. The RowsAffected check above is the
+		// backstop if the constraint is ever relaxed.
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.Code == pgerrcode.ForeignKeyViolation {
+			err = errAccountNotFound
+		}
+
+		if errors.Is(err, errAccountNotFound) {
+			writeError(w, http.StatusNotFound, "account not found")
 			return
 		}
+
 		writeError(w, http.StatusInternalServerError, "failed to create transaction")
 		return
 	}
@@ -61,7 +128,7 @@ func (a *API) createTransaction(w http.ResponseWriter, r *http.Request) {
 // GET /transactions/{id}.
 func (a *API) getTransaction(w http.ResponseWriter, r *http.Request) {
 	id, err := strconv.Atoi(chi.URLParam(r, "id"))
-	
+
 	if err != nil {
 		writeError(w, http.StatusBadRequest, "invalid transaction id")
 		return
