@@ -1,20 +1,19 @@
 package api
 
 import (
-	"encoding/json"
 	"net/http"
+
+	"go-ledger/internal/httpx"
 )
 
 func writeJSON(w http.ResponseWriter, status int, v any) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(status)
-	json.NewEncoder(w).Encode(v)
-}
-
-type errorResponse struct {
-	Error string `json:"error"`
+	httpx.WriteJSON(w, status, v)
 }
 
 func writeError(w http.ResponseWriter, status int, msg string) {
-	writeJSON(w, status, errorResponse{Error: msg})
+	httpx.WriteError(w, status, msg)
+}
+
+func writeList[T any](w http.ResponseWriter, items []T, total int, p pageParams) {
+	httpx.WriteList(w, items, total, p.Limit, p.Offset)
 }

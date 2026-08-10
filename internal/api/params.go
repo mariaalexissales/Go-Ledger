@@ -1,0 +1,51 @@
+package api
+
+import (
+	"net/http"
+	"strconv"
+)
+
+const (
+	defaultLimit = 25
+	maxLimit     = 100
+)
+
+// pageParams carries the normalized limit/offset for a list endpoint.
+type pageParams struct {
+	Limit  int
+	Offset int
+}
+
+// parsePageParams reads limit/offset from the query string. Malformed or
+// out-of-range values fall back to the defaults rather than erroring. A list
+// endpoint returning 400 for a stray query param is more annoying than useful.
+func parsePageParams(r *http.Request) pageParams {
+	q := r.URL.Query()
+
+	limit := defaultLimit
+	if n, err := strconv.Atoi(q.Get("limit")); err == nil && n > 0 {
+		limit = min(n, maxLimit)
+	}
+
+	offset := 0
+	if n, err := strconv.Atoi(q.Get("offset")); err == nil && n > 0 {
+		offset = n
+	}
+
+	return pageParams{Limit: limit, Offset: offset}
+}
+
+// optionalIntParam returns a pointer so the value can be passed straight to a
+// SQL predicate of the form ($1::int IS NULL OR col = $1::int).
+func optionalIntParam(r *http.Request, key string) *int {
+	v := r.URL.Query().Get(key)
+	if v == "" {
+		return nil
+	}
+
+	n, err := strconv.Atoi(v)
+	if err != nil {
+		return nil
+	}
+	return &n
+}
