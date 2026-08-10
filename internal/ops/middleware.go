@@ -1,68 +1,64 @@
 package ops
 
 import (
-	"context"
-	"net"
+	"math"
 	"net/http"
+	"strconv"
 	"time"
 
-	"github.com/jackc/pgx/v5/pgxpool"
+	"go-ledger/internal/httpx"
 )
 
 type SecurityGuard struct {
-	db      *pgxpool.Pool
-	limiter *RateLimiter
+	limiter  *RateLimiter
+	recorder *Recorder
+	resolver *Resolver
 }
 
-func NewSecurityGuard(db *pgxpool.Pool, limiter *RateLimiter) *SecurityGuard {
+func NewSecurityGuard(limiter *RateLimiter, recorder *Recorder, resolver *Resolver) *SecurityGuard {
 	return &SecurityGuard{
-		db:      db,
-		limiter: limiter,
+		limiter:  limiter,
+		recorder: recorder,
+		resolver: resolver,
 	}
 }
 
+func (sg *SecurityGuard) Limiter() *RateLimiter { return sg.limiter }
+func (sg *SecurityGuard) Resolver() *Resolver   { return sg.resolver }
+func (sg *SecurityGuard) Recorder() *Recorder   { return sg.recorder }
+
 func (sg *SecurityGuard) SecurityLogger(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		ip := extractIP(r)
+		ip := sg.resolver.ClientIP(r)
 		actionType := r.Method + " " + r.URL.Path
-		flagStatus := "ALLOWED"
 
-		if !sg.limiter.Allow(ip) {
-			flagStatus = "BLOCKED"
+		decision := sg.limiter.Allow(ip)
+		flagStatus := FlagAllowed
+		if !decision.Allowed {
+			flagStatus = FlagBlocked
 		}
 
-		go sg.logSecurityEvent(ip, actionType, flagStatus)
+		sg.recorder.Record(ip, actionType, flagStatus, time.Now())
 
-		if flagStatus == "BLOCKED" {
-			http.Error(w, "IP temporarily blocked", http.StatusTooManyRequests)
+		w.Header().Set("X-RateLimit-Limit", strconv.Itoa(decision.Limit))
+		w.Header().Set("X-RateLimit-Remaining", strconv.Itoa(decision.Remaining))
+		w.Header().Set("X-RateLimit-Reset", strconv.FormatInt(decision.ResetAt.Unix(), 10))
+
+		if !decision.Allowed {
+			writeRateLimited(w, decision)
 			return
 		}
+
 		next.ServeHTTP(w, r)
 	})
 }
 
-func (sg *SecurityGuard) logSecurityEvent(ip, actionType, flagStatus string) {
-	query := `
-		INSERT INTO security_events (ip_address, action_type, flag_status, timestamp)
-		VALUES ($1, $2, $3, NOW())
-	`
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
-	defer cancel()
-
-	_, err := sg.db.Exec(ctx, query, ip, actionType, flagStatus)
-	if err != nil {
-		println("Failed to insert security event:", err.Error())
-	}
-}
-
-func extractIP(r *http.Request) string {
-	if xff := r.Header.Get("X-Forwarded-For"); xff != "" {
-		return xff
+func writeRateLimited(w http.ResponseWriter, decision Decision) {
+	retryAfter := int(math.Ceil(decision.RetryAfter(time.Now()).Seconds()))
+	if retryAfter < 1 {
+		retryAfter = 1
 	}
 
-	ip, _, err := net.SplitHostPort(r.RemoteAddr)
-	if err != nil {
-		return r.RemoteAddr
-	}
-	return ip
+	w.Header().Set("Retry-After", strconv.Itoa(retryAfter))
+	httpx.WriteError(w, http.StatusTooManyRequests, "rate limit exceeded")
 }
