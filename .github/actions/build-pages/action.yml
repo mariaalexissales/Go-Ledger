@@ -1,0 +1,34 @@
+name: Build Pages bundle
+description: >-
+  Builds the static replay console from web/public/replay and uploads it as a
+  GitHub Pages artifact. Shared by the deploy workflow and the recording
+  workflow so the published bundle is produced exactly one way.
+
+runs:
+  using: composite
+  steps:
+    - name: Fail early if the fixtures are missing
+      shell: bash
+      run: test -f web/public/replay/index.json
+
+    - uses: actions/setup-node@v4
+      with:
+        node-version: 22
+        cache: npm
+        cache-dependency-path: web/package-lock.json
+
+    - name: Install dependencies
+      shell: bash
+      working-directory: web
+      run: npm ci
+
+    - name: Build the static console
+      shell: bash
+      working-directory: web
+      run: npm run build:pages
+
+    - uses: actions/configure-pages@v5
+
+    - uses: actions/upload-pages-artifact@v3
+      with:
+        path: web/dist-pages

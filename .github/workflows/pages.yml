@@ -1,0 +1,38 @@
+name: Deploy console to GitHub Pages
+
+# The published console is the static replay build: recorded fixtures instead of
+# a live Go server, because Pages cannot run one. This workflow only deploys
+# what is already committed under web/public/replay. To regenerate that data,
+# run the "Record demo data" workflow.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Shared with record.yml so a manual recording and a push-triggered deploy queue
+# instead of racing each other at the Pages API.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/build-pages
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

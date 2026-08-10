@@ -1,0 +1,171 @@
+name: Record demo data
+
+# Regenerates the tables and demo runs behind the published console.
+#
+# The public site is a replay of real runs: this workflow stands up Postgres,
+# boots the API, seeds the ledger, executes every scenario in both client-IP
+# modes, and commits the captured fixtures back to the repo. Press "Run workflow"
+# after changing a scenario and the public demo catches up.
+on:
+  workflow_dispatch:
+    inputs:
+      fake_seed:
+        description: Seed for the fake ledger. Change it to deliberately reroll the 50 accounts.
+        default: "20260808"
+        required: true
+      deploy:
+        description: Deploy to GitHub Pages after recording
+        type: boolean
+        default: true
+
+permissions:
+  contents: write # commit the regenerated fixtures back to the branch
+  pages: write
+  id-token: write
+
+# Shared with pages.yml so a recording and a push-triggered deploy queue instead
+# of racing each other at the Pages API.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  record:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: password
+          POSTGRES_DB: go_ledger_db
+        ports:
+          - 5432:5432
+        # Gate on readiness so the server never races the database on boot.
+        options: >-
+          --health-cmd "pg_isready -U postgres -d go_ledger_db"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+
+    steps:
+      # A branch, not the default detached HEAD, because the commit step pushes.
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      # Building first means the backgrounded process is the server itself.
+      # `go run` forks a child, so the pid you capture is the wrong one.
+      - name: Build the server
+        run: go build -o bin/server ./cmd/server
+
+      - name: Start the API and wait for it
+        env:
+          DATABASE_URL: postgres://postgres:password@localhost:5432/go_ledger_db?sslmode=disable
+          PORT: "8080"
+          SEED_ON_START: "true"
+          FAKE_SEED: ${{ inputs.fake_seed }}
+          DEMOS_ENABLED: "true"
+          OPS_ENABLED: "true"
+          CORS_ALLOWED_ORIGINS: ""
+          CLIENT_IP_MODE: xff-trust-all
+          RATE_LIMIT: "30"
+          RATE_WINDOW: 10s
+          RATE_BLOCK_PERIOD: 30s
+        run: |
+          ./bin/server > server.log 2>&1 &
+          echo $! > server.pid
+
+          for _ in $(seq 1 30); do
+            if curl -sf http://localhost:8080/health > /dev/null; then
+              echo "API is up"
+              exit 0
+            fi
+            sleep 1
+          done
+
+          # Without this the recorder would write empty fixtures and the next
+          # step would happily publish them.
+          echo "::error::API did not become healthy within 30s"
+          cat server.log
+          exit 1
+
+      - name: Record every scenario in both client IP modes
+        run: go run ./cmd/record
+
+      # A healthy server is not proof of a healthy recording: a scenario can run
+      # and still produce nothing. Without this, empty fixtures would deploy.
+      - name: Check the recording looks sane
+        run: |
+          index=web/public/replay/index.json
+          scenarios=$(jq '.demos | length' "$index")
+          modes=$(jq '.modes | length' "$index")
+          expected=$(( scenarios * modes + 1 ))
+          actual=$(ls web/public/replay/*.json | wc -l)
+
+          echo "$scenarios scenarios x $modes modes -> expected $expected files, found $actual"
+          if [ "$actual" -ne "$expected" ]; then
+            echo "::error::fixture count mismatch"
+            exit 1
+          fi
+
+          for file in web/public/replay/*.json; do
+            if [ "$(basename "$file")" = "index.json" ]; then
+              continue
+            fi
+
+            # `// 0` so a fixture missing these paths fails the numeric test
+            # below rather than blowing up on jq's `null`.
+            events=$(jq '.events | length // 0' "$file")
+            sent=$(jq '.result.summary.sent // 0' "$file")
+            echo "  $(basename "$file"): $sent requests, $events events"
+
+            if [ "$events" -eq 0 ] || [ "$sent" -eq 0 ]; then
+              echo "::error::$file recorded no traffic"
+              exit 1
+            fi
+          done
+
+      - name: Stop the API
+        if: always()
+        run: |
+          kill "$(cat server.pid)" 2>/dev/null || true
+          echo "--- server log ---"
+          cat server.log || true
+
+      - name: Commit the regenerated fixtures
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add web/public/replay
+
+          if git diff --staged --quiet; then
+            echo "Recording matched what is already committed, nothing to do."
+            exit 0
+          fi
+
+          git commit -m "Re-record demo fixtures (seed ${{ inputs.fake_seed }})"
+          # This push will NOT re-trigger pages.yml: GitHub deliberately does not
+          # fire workflows for GITHUB_TOKEN pushes. That is what we want here,
+          # since this workflow deploys the result itself, below.
+          git push
+
+      - uses: ./.github/actions/build-pages
+        if: inputs.deploy
+
+  deploy:
+    needs: record
+    if: inputs.deploy
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
