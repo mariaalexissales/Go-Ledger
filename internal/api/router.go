@@ -13,6 +13,14 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
+// API carries what the ledger handlers need. Queries run against the pool
+// directly rather than through a repository layer: the SQL is the interesting
+// part of these handlers, and hiding it behind an interface would add a layer
+// without making anything testable, since a fake would still need a live pool.
+type API struct {
+	DB *pgxpool.Pool
+}
+
 // Deps are the long-lived components the router wires together. They are
 // constructed in main so their lifecycles (the recorder's worker goroutine in
 // particular) can be tied to the process, not to the router.

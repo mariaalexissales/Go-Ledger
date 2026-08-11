@@ -1,7 +1,9 @@
 package api
 
 import (
+	"context"
 	"errors"
+	"fmt"
 	"net/http"
 	"strconv"
 
@@ -12,6 +14,31 @@ import (
 
 	"go-ledger/internal/httpx"
 )
+
+// errAccountNotFound distinguishes "the referenced account does not exist" from
+// "the transaction does not exist".
+var errAccountNotFound = errors.New("account not found")
+
+// withTx runs fn inside a transaction, committing on success and rolling back
+// on any error.
+func (a *API) withTx(ctx context.Context, fn func(tx pgx.Tx) error) error {
+	tx, err := a.DB.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to begin transaction: %w", err)
+	}
+
+	defer tx.Rollback(ctx)
+
+	if err := fn(tx); err != nil {
+		return err
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return fmt.Errorf("failed to commit transaction: %w", err)
+	}
+
+	return nil
+}
 
 // GET: List transactions /transactions?limit=&offset=&account_id=
 func (a *API) listTransactions(w http.ResponseWriter, r *http.Request) {
