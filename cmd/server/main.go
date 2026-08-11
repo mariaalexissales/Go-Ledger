@@ -120,7 +120,7 @@ func main() {
 	if cfg.DemosEnabled {
 		runner := demo.NewRunner("http://127.0.0.1:"+cfg.Port, demoToken, guard)
 		demos = demo.NewHandler(runner).Routes()
-		log.Printf("Demo scenarios enabled (%d registered)", len(demo.All()))
+		log.Printf("Demo scenarios enabled (%d available)", len(demo.All()))
 	}
 
 	// The recorder outlives the signal context on purpose: requests still in

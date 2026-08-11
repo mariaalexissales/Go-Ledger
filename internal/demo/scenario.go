@@ -1,16 +1,13 @@
 // Package demo runs scripted traffic patterns against the ledger API so the
 // security guard can be observed reacting to them in real time.
 //
-// Adding a scenario is one file: declare it and call Register from an init
-// function. Nothing else needs wiring. It appears in the API listing and in the
-// UI automatically.
+// This file defines what a scenario is. The scenarios themselves are in
+// scenarios.go: add an entry to the slice there and it appears in the API
+// listing and in the UI automatically.
 package demo
 
 import (
 	"context"
-	"fmt"
-	"sort"
-	"sync"
 	"time"
 )
 
@@ -51,46 +48,23 @@ type Scenario struct {
 	Run  func(ctx context.Context, c *Client) error
 }
 
-var (
-	registryMu sync.RWMutex
-	registry   = map[string]Scenario{}
-)
-
-// Register adds a scenario. Call it from init in the scenario's own file.
-func Register(s Scenario) {
-	registryMu.Lock()
-	defer registryMu.Unlock()
-
-	if s.Meta.ID == "" {
-		panic("demo: scenario is missing an ID")
-	}
-	if _, exists := registry[s.Meta.ID]; exists {
-		panic(fmt.Sprintf("demo: scenario %q registered twice", s.Meta.ID))
-	}
-
-	registry[s.Meta.ID] = s
-}
-
-// All returns scenario metadata in a stable order.
+// All returns scenario metadata in declaration order, which is the order to
+// read them in: baseline first, then each way of defeating the guard.
 func All() []Meta {
-	registryMu.RLock()
-	defer registryMu.RUnlock()
-
-	metas := make([]Meta, 0, len(registry))
-	for _, s := range registry {
+	metas := make([]Meta, 0, len(scenarios))
+	for _, s := range scenarios {
 		metas = append(metas, s.Meta)
 	}
-
-	sort.Slice(metas, func(i, j int) bool { return metas[i].ID < metas[j].ID })
 	return metas
 }
 
 func Get(id string) (Scenario, bool) {
-	registryMu.RLock()
-	defer registryMu.RUnlock()
-
-	s, ok := registry[id]
-	return s, ok
+	for _, s := range scenarios {
+		if s.Meta.ID == id {
+			return s, true
+		}
+	}
+	return Scenario{}, false
 }
 
 // Summary aggregates a completed run.

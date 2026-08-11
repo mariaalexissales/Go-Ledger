@@ -173,12 +173,14 @@ the entire point.
 
 ### Adding your own
 
-One file in `internal/demo/`, registered from `init`. Nothing else needs wiring. It
+One entry in the `scenarios` slice in
+[internal/demo/scenarios.go](internal/demo/scenarios.go). Nothing else needs wiring. It
 shows up in the API listing and the UI automatically.
 
 ```go
-func init() {
-    Register(Scenario{
+var scenarios = []Scenario{
+    // ...
+    {
         Meta: Meta{
             ID:      "my-scenario",
             Name:    "My scenario",
@@ -198,9 +200,13 @@ func init() {
             }
             return nil
         },
-    })
+    },
 }
 ```
+
+Scale request counts off `c.Policy().Limit` rather than hardcoding them, as every
+existing scenario does. A scenario written for a limit of 30 demonstrates nothing once
+somebody tunes the limit to 5 in the console.
 
 `As(ip)` claims an identity over the trusted channel. `Spoof(ip)` sends a raw
 `X-Forwarded-For`. Runs are capped at 400 requests and 90 seconds, one at a time.
@@ -349,7 +355,7 @@ internal/
   api/               chi router, ledger handlers, DTOs
   config/            all environment parsing, one place
   db/                embedded SQL under migrations/, run automatically on boot
-  demo/              scenario registry, loopback client, runner
+  demo/              scenario list, loopback client, runner
   httpx/             the shared JSON response envelope
   ops/               limiter, guard, IP resolver, recorder, hub, SSE, console
   seed/              gofakeit data
