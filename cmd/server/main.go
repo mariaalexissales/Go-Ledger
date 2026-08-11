@@ -182,6 +182,30 @@ func serve(cfg *config.Config, ipMode ops.ClientIPMode, pool *pgxpool.Pool) erro
 			Demos:   demos,
 			SPA:     spaHandler,
 		}),
+
+		// http.Server has no default timeouts at all: a connection that opens
+		// and then dribbles one header byte per minute is held open forever, and
+		// costs a goroutine the whole time. That is Slowloris, and it defeats a
+		// per-request rate limiter completely, because it never completes a
+		// request to be counted. Odd thing for this repo of all repos to be
+		// missing.
+		ReadHeaderTimeout: 5 * time.Second,
+		ReadTimeout:       15 * time.Second,
+
+		// Safe for the SSE stream despite it being open-ended, because every
+		// frame goes through writeRaw in internal/ops/stream.go, which calls
+		// SetWriteDeadline first. A per-connection deadline overrides the
+		// server-wide one, so the stream renews its own 10s budget on each
+		// write and this value only ever applies to ordinary responses.
+		WriteTimeout: 30 * time.Second,
+
+		// Only applies between requests on a keep-alive connection, so it does
+		// not touch a stream that is mid-response.
+		IdleTimeout: 60 * time.Second,
+
+		// 64 KiB, against a 1 MiB default. Nothing here needs more, and the
+		// X-Forwarded-For header is attacker-controlled by design.
+		MaxHeaderBytes: 1 << 16,
 	}
 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
