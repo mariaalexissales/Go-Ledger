@@ -1,0 +1,29 @@
+version: 2
+
+# Monthly rather than weekly, and grouped rather than one PR per dependency:
+# this is a demo repo with 20-odd direct dependencies, and a stream of
+# single-bump PRs would be noise nobody reads.
+updates:
+  - package-ecosystem: gomod
+    directory: /
+    schedule:
+      interval: monthly
+    groups:
+      go:
+        patterns: ["*"]
+
+  - package-ecosystem: npm
+    directory: /web
+    schedule:
+      interval: monthly
+    groups:
+      web:
+        patterns: ["*"]
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    groups:
+      actions:
+        patterns: ["*"]
