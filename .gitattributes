@@ -1,2 +1,12 @@
-# Auto detect text files and perform LF normalization
-* text=auto
+# Auto detect text files, and check them out with LF everywhere. Without the
+# explicit eol, Windows clones get CRLF working copies and gofmt rejects every
+# Go file in the repo while CI stays green -- the local formatting check becomes
+# permanently red and stops carrying any signal.
+* text=auto eol=lf
+
+# Generated, committed on purpose, and not worth reading in a diff.
+# web/public/replay is recorded by cmd/record (see .github/workflows/record.yml)
+# and routeTree.gen.ts is written by the TanStack Router Vite plugin.
+web/public/replay/*.json linguist-generated -diff
+web/src/routeTree.gen.ts linguist-generated -diff
+package-lock.json linguist-generated -diff
