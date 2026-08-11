@@ -98,10 +98,9 @@ func (c *Console) replay(w http.ResponseWriter, rc *http.ResponseController, r *
 		LIMIT $2
 	`, sinceID, maxReplayEvents)
 	if err != nil {
-		// Returning sinceID degrades the stream to "no gap-fill" while the client,
-		// having sent Last-Event-ID, believes it received a complete replay. There
-		// is no way to signal that over SSE, so at minimum it has to be logged --
-		// otherwise a failing replay query is invisible on both sides.
+		// Returning sinceID silently degrades to "no gap-fill" while a client that
+		// sent Last-Event-ID believes it got a complete replay. SSE cannot signal
+		// that, so logging is the only way it is visible at all.
 		log.Printf("SSE replay query failed from event %d: %v", sinceID, err)
 		return sinceID
 	}

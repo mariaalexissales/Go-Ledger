@@ -44,9 +44,8 @@ func NewRateLimiter(limit int, window time.Duration, blockPeriod time.Duration) 
 	return rl
 }
 
-// Close stops the sweeper goroutine and waits for it to exit, so once Close
-// returns there is definitely nothing left running. Idempotent, and safe to call
-// concurrently: the second caller just waits on an already-closed channel.
+// Close stops the sweeper and waits for it to exit, so nothing is left running
+// once Close returns. Idempotent and safe to call concurrently.
 func (rl *RateLimiter) Close() {
 	rl.closeOnce.Do(func() { close(rl.done) })
 	<-rl.stopped

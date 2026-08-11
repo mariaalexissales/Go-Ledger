@@ -98,13 +98,11 @@ func (r *recorder) run() error {
 		return fmt.Errorf("no demo scenarios available")
 	}
 
-	// Snapshot the ledger before running anything. It has to happen first: in
-	// remote-addr mode every demo request is attributed to the loopback address,
-	// so a run leaves 127.0.0.1 rate-limited for the whole block period -- and
-	// /api/accounts is behind the guard, unlike everything else the recorder
-	// touches. Reading it after the scenarios returns 429.
-	//
-	// Nothing is lost by moving it earlier, because scenarios only ever GET.
+	// Before the runs, not after: in remote-addr mode every demo request is
+	// attributed to the loopback address, so a run leaves 127.0.0.1 blocked --
+	// and /api/accounts is the one thing the recorder touches that is behind the
+	// guard. Reading it afterwards returns 429. Scenarios only GET, so nothing is
+	// lost by going first.
 	ledger, err := r.snapshotLedger()
 	if err != nil {
 		return err
@@ -198,11 +196,10 @@ func (r *recorder) recordScenario(id string, mode ops.ClientIPMode) error {
 	return nil
 }
 
-// recordedConfig is the config as it lands in index.json: what describes the
-// recording, without the per-process fields the replay transport supplies
-// itself. Declaring the two that are kept beats listing the six that are
-// dropped -- adding a field to the server's response cannot silently leak into
-// a fixture. Mirrors the Omit<> in web/src/replay/fixtures.ts.
+// recordedConfig is the config as it lands in index.json, without the
+// per-process fields the replay transport fills in itself. Declaring the two
+// kept beats listing the six dropped: a new field on the server's response
+// cannot leak into a fixture. Mirrors the Omit<> in web/src/replay/fixtures.ts.
 type recordedConfig struct {
 	ClientIPMode ops.ClientIPMode `json:"client_ip_mode"`
 	RateLimit    ops.Policy       `json:"rate_limit"`

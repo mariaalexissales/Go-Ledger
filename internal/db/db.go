@@ -23,18 +23,13 @@ type Querier interface {
 	Query(ctx context.Context, sql string, args ...any) (pgx.Rows, error)
 }
 
-// Collect runs a query and gathers every row through scan.
+// Collect runs a query and gathers every row through scan. pgx.CollectRows
+// closes the rows and folds rows.Err into its return, so callers get one error
+// path instead of three.
 //
-// This exists because the three list endpoints had the same twenty lines each:
-// query, defer Close, a rows.Next loop, a rows.Err check, and the same error
-// message written out three separate times per handler. pgx.CollectRows already
-// closes the rows and folds rows.Err into its return, so all of that collapses
-// into one error path.
-//
-// For a paginated query, select COUNT(*) OVER() as the last column and have
-// scan write it into a variable captured from the caller -- see listAccounts.
-// That keeps the unpaginated total available without a second round trip, which
-// is why RowToStructByPos cannot be used here: the row is one column wider than
+// For a paginated query, select COUNT(*) OVER() as the last column and let scan
+// write it into a variable captured from the caller -- see listAccounts. That is
+// also why RowToStructByPos is unusable here: the row is one column wider than
 // the struct.
 func Collect[T any](ctx context.Context, q Querier, sql string, scan func(pgx.CollectableRow) (T, error), args ...any) ([]T, error) {
 	rows, err := q.Query(ctx, sql, args...)

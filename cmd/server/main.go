@@ -185,28 +185,24 @@ func serve(cfg *config.Config, ipMode ops.ClientIPMode, pool *pgxpool.Pool) erro
 			SPA:     spaHandler,
 		}),
 
-		// http.Server has no default timeouts at all: a connection that opens
-		// and then dribbles one header byte per minute is held open forever, and
-		// costs a goroutine the whole time. That is Slowloris, and it defeats a
-		// per-request rate limiter completely, because it never completes a
-		// request to be counted. Odd thing for this repo of all repos to be
-		// missing.
+		// http.Server defaults every timeout to zero, meaning none: a connection
+		// dribbling one header byte per minute is held open indefinitely. That is
+		// Slowloris, and it walks straight past a per-request rate limiter
+		// because it never completes a request to be counted.
 		ReadHeaderTimeout: 5 * time.Second,
 		ReadTimeout:       15 * time.Second,
 
-		// Safe for the SSE stream despite it being open-ended, because every
-		// frame goes through writeRaw in internal/ops/stream.go, which calls
-		// SetWriteDeadline first. A per-connection deadline overrides the
-		// server-wide one, so the stream renews its own 10s budget on each
-		// write and this value only ever applies to ordinary responses.
+		// Safe for the open-ended SSE stream: every frame goes out through
+		// writeRaw in internal/ops/stream.go, which sets a per-connection write
+		// deadline, and that overrides the server-wide one.
 		WriteTimeout: 30 * time.Second,
 
-		// Only applies between requests on a keep-alive connection, so it does
-		// not touch a stream that is mid-response.
+		// Between requests on a keep-alive connection only, so a stream that is
+		// mid-response is unaffected.
 		IdleTimeout: 60 * time.Second,
 
-		// 64 KiB, against a 1 MiB default. Nothing here needs more, and the
-		// X-Forwarded-For header is attacker-controlled by design.
+		// 64 KiB against a 1 MiB default; X-Forwarded-For is attacker-controlled
+		// by design here.
 		MaxHeaderBytes: 1 << 16,
 	}
 
@@ -225,12 +221,10 @@ func serve(cfg *config.Config, ipMode ops.ClientIPMode, pool *pgxpool.Pool) erro
 		}
 	}()
 
-	// A signal and a failed listen both leave by the same door, so a server that
-	// cannot bind still drains its queued events on the way out. This was
-	// log.Fatalf inside the goroutine, which is os.Exit from a non-main
-	// goroutine: it skipped the deferred pool.Close and signal stop, and it
-	// skipped the recorder drain below -- discarding queued security events at
-	// precisely the moment the server was failing.
+	// A signal and a failed listen leave by the same door, so a server that
+	// cannot bind still drains its queued events. Not log.Fatalf in the
+	// goroutine: os.Exit from a non-main goroutine skips every defer here and
+	// the drain below.
 	var listenErr error
 	select {
 	case <-ctx.Done():
