@@ -1,6 +1,6 @@
 # Go-Ledger
 
-**[Try the console](https://mariaalexissales.github.io/go-ledger/)** _(a recording, see
+**[Try the console](https://mariaalexissales.github.io/Go-Ledger/)** _(a recording, see
 [GitHub Pages](#github-page-preview))_
 
 A small double-entry-ish ledger API in Go, wrapped in an IP rate limiter and a
@@ -274,8 +274,15 @@ npm run build:pages
 npm run preview:pages
 ```
 
-That serves the static bundle at <http://localhost:4173/go-ledger/> with no backend
-running at all, which is the real test. Stop the Go server before checking.
+That serves the static bundle at <http://localhost:4173/Go-Ledger/> with no backend
+running at all, which is the real test. Stop the Go server before checking. The path
+comes from `VITE_BASE` in `web/.env.pages` and must match the repository name, since
+that is what GitHub Pages puts in front of every asset URL.
+
+A deep link like `/Go-Ledger/demos` answers with an HTTP 404 status even though the
+page renders correctly. That is unavoidable on Pages, which has no history fallback:
+the build copies `index.html` to `404.html`, Pages serves that for any unknown path,
+and the SPA boots and routes on the real URL. Only the status line is wrong.
 
 Moving to a user page or a custom domain? Change `VITE_BASE` in
 [web/.env.pages](web/.env.pages) to `/`. The router base path and fixture URLs both
