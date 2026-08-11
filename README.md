@@ -11,6 +11,38 @@ The ledger is the excuse. The interesting part is `internal/ops`. Every request 
 evaluated by a rate limiter and recorded as `ALLOWED` or `BLOCKED`, and the console
 lets you watch that happen live while scripted traffic patterns try to get past it.
 
+```mermaid
+flowchart TD
+    browser(["Browser"])
+    runner["Demo runner<br/>POST /ops/demos/{id}/run"]
+    router{{"chi router · one port"}}
+    ui(["React console"])
+
+    browser --> router
+    runner -. "loopback · synthetic source IPs" .-> router
+
+    router -- "/api/* · GUARDED" --> resolver
+    router -- "/ops/* · unguarded" --> ops
+    router -- "/* · SPA" --> ui
+
+    subgraph guard ["SecurityLogger"]
+        direction LR
+        resolver["Resolver.ClientIP<br/>demo token → XFF → RemoteAddr"] --> limiter{"RateLimiter<br/>.Allow"}
+        limiter -- ALLOWED --> ledger["Ledger handlers"]
+        limiter -- BLOCKED --> deny["429 · Retry-After"]
+    end
+
+    limiter == "recorded either way" ==> recorder["Recorder · batches of 200<br/>INSERT … RETURNING id"]
+    recorder --> db[("security_events")]
+    db --> stream["Hub → /ops/events/stream<br/>SSE · Last-Event-ID replay"]
+
+    ops["Console API<br/>events · stats · config · demos"] --> ui
+    stream --> ui
+```
+
+The guard is `/api` only, and the console watching it is not behind the guard. Both
+halves are detailed in [How the security logger works](#how-the-security-logger-works).
+
 > **This project contains a deliberate vulnerability.** The default client-IP
 > resolver trusts the `X-Forwarded-For` header verbatim, which makes the rate
 > limiter trivially bypassable. That is the point of the `xff-spoof` demo. You can
