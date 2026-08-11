@@ -1,0 +1,70 @@
+name: CI
+
+# The checks that have to pass before anything lands. Split into two jobs
+# because the Go and web toolchains share nothing and there is no reason for a
+# failing TypeScript build to hide a failing Go test.
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+# Deliberately not the "pages" group used by pages.yml and record.yml: those
+# queue against the Pages API, while these checks should run immediately.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  go:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      # No -tags embed_spa: internal/spa/embed_on.go embeds all:dist, which
+      # does not exist until the web build has run.
+      - name: Build
+        run: go build ./...
+
+      - name: Vet
+        run: go vet ./...
+
+      # gofmt -l prints offending files but still exits 0, so the exit status
+      # has to come from testing that its output was empty.
+      - name: Check formatting
+        run: test -z "$(gofmt -l ./cmd ./internal)"
+
+      # -race matters most for internal/ops: the hub, recorder and limiter are
+      # all touched concurrently by request handlers and the SSE stream.
+      - name: Test
+        run: go test ./... -race
+
+  web:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Test
+        run: npm run test
