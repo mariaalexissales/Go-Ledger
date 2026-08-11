@@ -9,6 +9,8 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5"
+
+	"go-ledger/internal/httpx"
 )
 
 // GET: List accounts /accounts?limit=&offset=&q=
@@ -27,7 +29,7 @@ func (a *API) listAccounts(w http.ResponseWriter, r *http.Request) {
 	`, search, page.Limit, page.Offset)
 
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "failed to list accounts")
+		httpx.WriteError(w, http.StatusInternalServerError, "failed to list accounts")
 		return
 	}
 	defer rows.Close()
@@ -38,14 +40,14 @@ func (a *API) listAccounts(w http.ResponseWriter, r *http.Request) {
 	for rows.Next() {
 		var acc Account
 		if err := rows.Scan(&acc.ID, &acc.Name, &acc.Balance, &acc.CreatedAt, &total); err != nil {
-			writeError(w, http.StatusInternalServerError, "failed to list accounts")
+			httpx.WriteError(w, http.StatusInternalServerError, "failed to list accounts")
 			return
 		}
 		accounts = append(accounts, acc)
 	}
 
 	if rows.Err() != nil {
-		writeError(w, http.StatusInternalServerError, "failed to list accounts")
+		httpx.WriteError(w, http.StatusInternalServerError, "failed to list accounts")
 		return
 	}
 
@@ -57,12 +59,12 @@ func (a *API) createAccount(w http.ResponseWriter, r *http.Request) {
 	var req CreateAccountRequest
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeError(w, http.StatusBadRequest, "invalid request body")
+		httpx.WriteError(w, http.StatusBadRequest, "invalid request body")
 		return
 	}
 
 	if strings.TrimSpace(req.Name) == "" {
-		writeError(w, http.StatusBadRequest, "name is required")
+		httpx.WriteError(w, http.StatusBadRequest, "name is required")
 		return
 	}
 
@@ -75,11 +77,11 @@ func (a *API) createAccount(w http.ResponseWriter, r *http.Request) {
 	`, req.Name).Scan(&acc.ID, &acc.Name, &acc.Balance, &acc.CreatedAt)
 
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "failed to create account")
+		httpx.WriteError(w, http.StatusInternalServerError, "failed to create account")
 		return
 	}
 
-	writeJSON(w, http.StatusCreated, acc)
+	httpx.WriteJSON(w, http.StatusCreated, acc)
 }
 
 // GET: Get Account /{id}
@@ -87,7 +89,7 @@ func (a *API) getAccount(w http.ResponseWriter, r *http.Request) {
 	id, err := strconv.Atoi(chi.URLParam(r, "id"))
 
 	if err != nil {
-		writeError(w, http.StatusBadRequest, "invalid account id")
+		httpx.WriteError(w, http.StatusBadRequest, "invalid account id")
 		return
 	}
 
@@ -101,14 +103,14 @@ func (a *API) getAccount(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			writeError(w, http.StatusNotFound, "account not found")
+			httpx.WriteError(w, http.StatusNotFound, "account not found")
 		} else {
-			writeError(w, http.StatusInternalServerError, "failed to get account")
+			httpx.WriteError(w, http.StatusInternalServerError, "failed to get account")
 		}
 		return
 	}
 
-	writeJSON(w, http.StatusOK, acc)
+	httpx.WriteJSON(w, http.StatusOK, acc)
 }
 
 // DELETE: Delete Account /{id}
@@ -116,7 +118,7 @@ func (a *API) deleteAccount(w http.ResponseWriter, r *http.Request) {
 	id, err := strconv.Atoi(chi.URLParam(r, "id"))
 
 	if err != nil {
-		writeError(w, http.StatusBadRequest, "invalid account id")
+		httpx.WriteError(w, http.StatusBadRequest, "invalid account id")
 		return
 	}
 
@@ -125,12 +127,12 @@ func (a *API) deleteAccount(w http.ResponseWriter, r *http.Request) {
 	`, id)
 
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "failed to delete account")
+		httpx.WriteError(w, http.StatusInternalServerError, "failed to delete account")
 		return
 	}
 
 	if cmdTag.RowsAffected() == 0 {
-		writeError(w, http.StatusNotFound, "account not found")
+		httpx.WriteError(w, http.StatusNotFound, "account not found")
 		return
 	}
 

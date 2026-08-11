@@ -10,6 +10,8 @@ import (
 	"github.com/jackc/pgerrcode"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
+
+	"go-ledger/internal/httpx"
 )
 
 // GET: List transactions /transactions?limit=&offset=&account_id=
@@ -21,7 +23,7 @@ func (a *API) listTransactions(w http.ResponseWriter, r *http.Request) {
 func (a *API) listAccountTransactions(w http.ResponseWriter, r *http.Request) {
 	id, err := strconv.Atoi(chi.URLParam(r, "id"))
 	if err != nil {
-		writeError(w, http.StatusBadRequest, "invalid account id")
+		httpx.WriteError(w, http.StatusBadRequest, "invalid account id")
 		return
 	}
 
@@ -42,7 +44,7 @@ func (a *API) writeTransactionPage(w http.ResponseWriter, r *http.Request, accou
 	`, accountID, page.Limit, page.Offset)
 
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "failed to list transactions")
+		httpx.WriteError(w, http.StatusInternalServerError, "failed to list transactions")
 		return
 	}
 	defer rows.Close()
@@ -53,14 +55,14 @@ func (a *API) writeTransactionPage(w http.ResponseWriter, r *http.Request, accou
 	for rows.Next() {
 		var txn Transaction
 		if err := rows.Scan(&txn.ID, &txn.AccountID, &txn.Amount, &txn.Timestamp, &total); err != nil {
-			writeError(w, http.StatusInternalServerError, "failed to list transactions")
+			httpx.WriteError(w, http.StatusInternalServerError, "failed to list transactions")
 			return
 		}
 		transactions = append(transactions, txn)
 	}
 
 	if rows.Err() != nil {
-		writeError(w, http.StatusInternalServerError, "failed to list transactions")
+		httpx.WriteError(w, http.StatusInternalServerError, "failed to list transactions")
 		return
 	}
 
@@ -71,7 +73,7 @@ func (a *API) writeTransactionPage(w http.ResponseWriter, r *http.Request, accou
 func (a *API) createTransaction(w http.ResponseWriter, r *http.Request) {
 	var req CreateTransactionRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeError(w, http.StatusBadRequest, "invalid request body")
+		httpx.WriteError(w, http.StatusBadRequest, "invalid request body")
 		return
 	}
 
@@ -115,14 +117,14 @@ func (a *API) createTransaction(w http.ResponseWriter, r *http.Request) {
 		}
 
 		if errors.Is(err, errAccountNotFound) {
-			writeError(w, http.StatusNotFound, "account not found")
+			httpx.WriteError(w, http.StatusNotFound, "account not found")
 			return
 		}
 
-		writeError(w, http.StatusInternalServerError, "failed to create transaction")
+		httpx.WriteError(w, http.StatusInternalServerError, "failed to create transaction")
 		return
 	}
-	writeJSON(w, http.StatusCreated, txn)
+	httpx.WriteJSON(w, http.StatusCreated, txn)
 }
 
 // GET /transactions/{id}.
@@ -130,7 +132,7 @@ func (a *API) getTransaction(w http.ResponseWriter, r *http.Request) {
 	id, err := strconv.Atoi(chi.URLParam(r, "id"))
 
 	if err != nil {
-		writeError(w, http.StatusBadRequest, "invalid transaction id")
+		httpx.WriteError(w, http.StatusBadRequest, "invalid transaction id")
 		return
 	}
 
@@ -144,21 +146,21 @@ func (a *API) getTransaction(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			writeError(w, http.StatusNotFound, "transaction not found")
+			httpx.WriteError(w, http.StatusNotFound, "transaction not found")
 		} else {
-			writeError(w, http.StatusInternalServerError, "failed to get transaction")
+			httpx.WriteError(w, http.StatusInternalServerError, "failed to get transaction")
 		}
 		return
 	}
 
-	writeJSON(w, http.StatusOK, txn)
+	httpx.WriteJSON(w, http.StatusOK, txn)
 }
 
 // DELETE /transactions/{id}.
 func (a *API) deleteTransaction(w http.ResponseWriter, r *http.Request) {
 	id, err := strconv.Atoi(chi.URLParam(r, "id"))
 	if err != nil {
-		writeError(w, http.StatusBadRequest, "invalid transaction id")
+		httpx.WriteError(w, http.StatusBadRequest, "invalid transaction id")
 		return
 	}
 
@@ -178,9 +180,9 @@ func (a *API) deleteTransaction(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			writeError(w, http.StatusNotFound, "transaction not found")
+			httpx.WriteError(w, http.StatusNotFound, "transaction not found")
 		} else {
-			writeError(w, http.StatusInternalServerError, "failed to delete transaction")
+			httpx.WriteError(w, http.StatusInternalServerError, "failed to delete transaction")
 		}
 		return
 	}

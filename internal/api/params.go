@@ -3,6 +3,8 @@ package api
 import (
 	"net/http"
 	"strconv"
+
+	"go-ledger/internal/httpx"
 )
 
 const (
@@ -33,6 +35,12 @@ func parsePageParams(r *http.Request) pageParams {
 	}
 
 	return pageParams{Limit: limit, Offset: offset}
+}
+
+// writeList unpacks pageParams into the flat limit/offset that httpx takes, so
+// list handlers do not have to destructure it at every call site.
+func writeList[T any](w http.ResponseWriter, items []T, total int, p pageParams) {
+	httpx.WriteList(w, items, total, p.Limit, p.Offset)
 }
 
 // optionalIntParam returns a pointer so the value can be passed straight to a
