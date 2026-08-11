@@ -348,12 +348,11 @@ cmd/record/          captures real demo runs into the Pages replay fixtures
 internal/
   api/               chi router, ledger handlers, DTOs
   config/            all environment parsing, one place
-  db/migrations/     embedded SQL, run automatically on boot
+  db/                embedded SQL under migrations/, run automatically on boot
   demo/              scenario registry, loopback client, runner
   httpx/             the shared JSON response envelope
   ops/               limiter, guard, IP resolver, recorder, hub, SSE, console
   seed/              gofakeit data
-  server/            pool + migration wiring
   spa/               serves the built console (embedded or from disk)
 web/                 React console
   src/features/<f>/  <f>.api.ts (transport) · <f>.queries.ts (hooks) · <f>.types.ts (DTOs)

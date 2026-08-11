@@ -15,12 +15,14 @@ import (
 
 	"github.com/joho/godotenv"
 
+	"github.com/jackc/pgx/v5/pgxpool"
+
 	"go-ledger/internal/api"
 	"go-ledger/internal/config"
+	"go-ledger/internal/db"
 	"go-ledger/internal/demo"
 	"go-ledger/internal/ops"
 	"go-ledger/internal/seed"
-	"go-ledger/internal/server"
 	"go-ledger/internal/spa"
 )
 
@@ -53,12 +55,12 @@ func main() {
 	}
 
 	log.Println("Running migrations")
-	if err := server.RunMigrations(cfg.DatabaseURL); err != nil {
+	if err := db.RunMigrations(cfg.DatabaseURL); err != nil {
 		log.Fatalf("Failed to run migrations: %v", err)
 	}
 
 	connectCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	pool, err := server.Connect(connectCtx, cfg.DatabaseURL)
+	pool, err := pgxpool.New(connectCtx, cfg.DatabaseURL)
 	cancel()
 
 	if err != nil {
