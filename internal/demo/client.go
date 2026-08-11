@@ -1,11 +1,8 @@
 package demo
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
 	"errors"
-	"fmt"
 	"io"
 	"net/http"
 	"strconv"
@@ -98,15 +95,14 @@ func (c *Client) Sleep(ctx context.Context, d time.Duration) error {
 	}
 }
 
+// Get is the only verb scenarios need: they demonstrate read-request volume
+// against the guard, and writing rows would make a run leave traces in the
+// ledger that the next run inherits.
 func (c *Client) Get(ctx context.Context, id Identity, path string) (Step, error) {
-	return c.do(ctx, id, http.MethodGet, path, nil)
+	return c.do(ctx, id, http.MethodGet, path)
 }
 
-func (c *Client) Post(ctx context.Context, id Identity, path string, body any) (Step, error) {
-	return c.do(ctx, id, http.MethodPost, path, body)
-}
-
-func (c *Client) do(ctx context.Context, id Identity, method, path string, body any) (Step, error) {
+func (c *Client) do(ctx context.Context, id Identity, method, path string) (Step, error) {
 	if c.budget <= 0 {
 		return Step{}, ErrBudgetExhausted
 	}
@@ -121,22 +117,9 @@ func (c *Client) do(ctx context.Context, id Identity, method, path string, body 
 		Path:      path,
 	}
 
-	var reader io.Reader
-	if body != nil {
-		encoded, err := json.Marshal(body)
-		if err != nil {
-			return c.record(step, fmt.Errorf("encode body: %w", err))
-		}
-		reader = bytes.NewReader(encoded)
-	}
-
-	req, err := http.NewRequestWithContext(ctx, method, c.baseURL+path, reader)
+	req, err := http.NewRequestWithContext(ctx, method, c.baseURL+path, nil)
 	if err != nil {
 		return c.record(step, err)
-	}
-
-	if body != nil {
-		req.Header.Set("Content-Type", "application/json")
 	}
 
 	if id.Spoofed {

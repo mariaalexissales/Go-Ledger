@@ -8,7 +8,7 @@ import (
 	"net/http"
 )
 
-type ErrorResponse struct {
+type errorResponse struct {
 	Error string `json:"error"`
 }
 
@@ -19,7 +19,7 @@ func WriteJSON(w http.ResponseWriter, status int, v any) {
 }
 
 func WriteError(w http.ResponseWriter, status int, msg string) {
-	WriteJSON(w, status, ErrorResponse{Error: msg})
+	WriteJSON(w, status, errorResponse{Error: msg})
 }
 
 // ListResponse is the envelope every collection endpoint returns, so clients

@@ -100,11 +100,10 @@ func (rl *RateLimiter) Allow(ip string) Decision {
 // runtime so the console can tighten or relax the guard and show the effect
 // immediately, without a restart.
 type Policy struct {
-	Limit       int           `json:"limit"`
-	Window      time.Duration `json:"-"`
-	BlockPeriod time.Duration `json:"-"`
+	Limit int `json:"limit"`
 
-	// String forms for the wire, since a time.Duration marshals as nanoseconds.
+	// The durations travel as strings, since a time.Duration marshals as a
+	// nanosecond count that no client wants to read.
 	WindowText      string `json:"window"`
 	BlockPeriodText string `json:"block_period"`
 }
@@ -115,8 +114,6 @@ func (rl *RateLimiter) Policy() Policy {
 
 	return Policy{
 		Limit:           rl.limit,
-		Window:          rl.window,
-		BlockPeriod:     rl.blockPeriod,
 		WindowText:      rl.window.String(),
 		BlockPeriodText: rl.blockPeriod.String(),
 	}

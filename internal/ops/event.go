@@ -11,12 +11,14 @@ const (
 	FlagBlocked = "BLOCKED"
 )
 
+// SecurityEvent is the stored shape, scanned positionally. It never reaches the
+// wire -- EventDTO below is what clients see -- so it carries no struct tags.
 type SecurityEvent struct {
-	ID         int64     `db:"id" json:"id"`
-	Timestamp  time.Time `db:"timestamp" json:"timestamp"`
-	IPAddress  string    `db:"ip_address" json:"ip_address"`
-	ActionType string    `db:"action_type" json:"action_type"`
-	FlagStatus string    `db:"flag_status" json:"flag_status"`
+	ID         int64
+	Timestamp  time.Time
+	IPAddress  string
+	ActionType string
+	FlagStatus string
 }
 
 // EventDTO is the wire shape. The database stores action_type as a single
