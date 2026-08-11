@@ -11,7 +11,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "build:pages": "tsc -b && vite build --mode pages",
-    "preview:pages": "vite preview --mode pages --outDir dist-pages"
+    "preview:pages": "vite preview --mode pages"
   },
   "dependencies": {
     "@emotion/react": "^11.14.0",
@@ -20,6 +20,7 @@
     "@hookform/resolvers": "^5.7.1",
     "@mui/icons-material": "^9.3.1",
     "@mui/material": "^9.3.1",
+    "@mui/utils": "^9.3.0",
     "@tanstack/react-query": "^5.101.4",
     "@tanstack/react-router": "^1.170.23",
     "react": "^19.2.8",
@@ -28,7 +29,6 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
-    "@tanstack/react-router-devtools": "^1.167.1",
     "@tanstack/router-plugin": "^1.168.27",
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.4",

@@ -38,10 +38,10 @@ export default defineConfig(({ mode }) => {
       port: 5173,
       proxy: {
         '/api': { target: env.VITE_PROXY_TARGET || 'http://localhost:8080', changeOrigin: true },
-        // The event stream must not be buffered by the proxy, or the feed
-        // arrives in one lump when the connection closes.
+        // Carries GET /ops/events/stream as well as the plain endpoints. No
+        // extra options needed: Vite's proxy streams responses through rather
+        // than buffering them, so SSE frames arrive as the server writes them.
         '/ops': { target: env.VITE_PROXY_TARGET || 'http://localhost:8080', changeOrigin: true },
-        '/health': { target: env.VITE_PROXY_TARGET || 'http://localhost:8080', changeOrigin: true },
       },
     },
     build: {
