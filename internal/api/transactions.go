@@ -20,16 +20,22 @@ import (
 var errAccountNotFound = errors.New("account not found")
 
 // withTx runs fn inside a transaction, committing on success and rolling back
-// on any error.
-func (a *API) withTx(ctx context.Context, fn func(tx pgx.Tx) error) error {
+// on any error. fn receives the context so it does not have to reach back for
+// the request's own.
+func (a *API) withTx(ctx context.Context, fn func(ctx context.Context, tx pgx.Tx) error) error {
 	tx, err := a.DB.Begin(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to begin transaction: %w", err)
 	}
 
-	defer tx.Rollback(ctx)
+	// WithoutCancel because ctx is the request context: if the client
+	// disconnects mid-transaction it is already cancelled, and issuing the
+	// rollback on it would fail. pgx would still tear the connection down, so
+	// this is not a leak either way, but the rollback should be the thing that
+	// releases the connection rather than the failure that follows it.
+	defer tx.Rollback(context.WithoutCancel(ctx))
 
-	if err := fn(tx); err != nil {
+	if err := fn(ctx, tx); err != nil {
 		return err
 	}
 
@@ -104,10 +110,10 @@ func (a *API) createTransaction(w http.ResponseWriter, r *http.Request) {
 
 	var txn Transaction
 
-	err := a.withTx(r.Context(), func(tx pgx.Tx) error {
-		err := tx.QueryRow(r.Context(), `
-			INSERT INTO transactions (account_id, amount) 
-			VALUES ($1, $2) 
+	err := a.withTx(r.Context(), func(ctx context.Context, tx pgx.Tx) error {
+		err := tx.QueryRow(ctx, `
+			INSERT INTO transactions (account_id, amount)
+			VALUES ($1, $2)
 			RETURNING id, account_id, amount, timestamp
 		`, req.AccountID, req.Amount).Scan(&txn.ID, &txn.AccountID, &txn.Amount, &txn.Timestamp)
 
@@ -115,7 +121,7 @@ func (a *API) createTransaction(w http.ResponseWriter, r *http.Request) {
 			return err
 		}
 
-		cmdTag, err := tx.Exec(r.Context(), `
+		cmdTag, err := tx.Exec(ctx, `
 			UPDATE accounts
 			SET balance = balance + $1
 			WHERE id = $2
@@ -189,8 +195,8 @@ func (a *API) deleteTransaction(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = a.withTx(r.Context(), func(tx pgx.Tx) error {
-		cmdTag, err := tx.Exec(r.Context(), `
+	err = a.withTx(r.Context(), func(ctx context.Context, tx pgx.Tx) error {
+		cmdTag, err := tx.Exec(ctx, `
 			DELETE FROM transactions
 			WHERE id = $1
 		`, id)
