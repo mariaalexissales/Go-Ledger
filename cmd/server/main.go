@@ -187,15 +187,30 @@ func serve(cfg *config.Config, ipMode ops.ClientIPMode, pool *pgxpool.Pool) erro
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
+	// Buffered so the goroutine can report and exit even though the select
+	// below may already have been woken by a signal instead.
+	serveErr := make(chan error, 1)
+
 	go func() {
 		log.Printf("Listening on :%s (client IP mode: %s, rate limit: %d per %s)",
 			cfg.Port, ipMode, cfg.RateLimit, cfg.RateWindow)
 		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-			log.Fatalf("Server error: %v", err)
+			serveErr <- err
 		}
 	}()
 
-	<-ctx.Done()
+	// A signal and a failed listen both leave by the same door, so a server that
+	// cannot bind still drains its queued events on the way out. This was
+	// log.Fatalf inside the goroutine, which is os.Exit from a non-main
+	// goroutine: it skipped the deferred pool.Close and signal stop, and it
+	// skipped the recorder drain below -- discarding queued security events at
+	// precisely the moment the server was failing.
+	var listenErr error
+	select {
+	case <-ctx.Done():
+	case listenErr = <-serveErr:
+		log.Printf("Server error: %v", listenErr)
+	}
 	stop()
 
 	log.Println("Shutting down server")
@@ -214,7 +229,10 @@ func serve(cfg *config.Config, ipMode ops.ClientIPMode, pool *pgxpool.Pool) erro
 		log.Println("Timed out flushing security events")
 	}
 
-	return nil
+	// Reported only now, so the process still exits non-zero for a supervisor or
+	// a compose restart policy, but does so after the drain rather than instead
+	// of it.
+	return listenErr
 }
 
 func runHealthcheck() error {
