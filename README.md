@@ -1,4 +1,4 @@
-# go-ledger
+# Go-Ledger
 
 **[Try the console](https://mariaalexissales.github.io/go-ledger/)** _(a recording, see
 [GitHub Pages](#github-page-preview))_
