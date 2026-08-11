@@ -72,20 +72,27 @@ both the API and the console on a single port, so no CORS is involved at all.
 ### Development with hot reload
 
 ```bash
-docker compose up -d db
+npm run db:up
+```
+
+Then the API and the console in two terminals:
+
+```bash
+npm run dev:api
 ```
 
 ```bash
-npm install
+npm run dev:web
 ```
 
-```bash
-npm run dev
-```
+That puts the Go API on `:8080` and Vite on `:5173`. Open <http://localhost:5173>.
+Vite proxies `/api` and `/ops` to the Go server, so the app behaves identically to the
+container build while keeping HMR.
 
-That runs the Go API on `:8080` and Vite on `:5173` together. Open
-<http://localhost:5173>. Vite proxies `/api` and `/ops` to the Go server, so the app
-behaves identically to the container build while keeping HMR.
+Two terminals rather than one script: running both processes from a single npm script
+needs a dependency, and PowerShell has no portable way to background one. Nothing here
+needs `npm install` — the root `package.json` is a task runner with no dependencies of
+its own.
 
 Copy `.env.example` to `.env` first if you want to change anything. A missing `.env`
 is not fatal, and real environment variables always win.

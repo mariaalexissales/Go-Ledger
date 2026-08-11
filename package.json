@@ -1,9 +1,8 @@
 {
   "name": "go-ledger",
   "private": true,
-  "description": "Task runner for the Go API and the React console. npm scripts rather than a Makefile, because make is not installed on Windows by default and Node already is.",
+  "description": "Task runner for the Go API and the React console. npm scripts rather than a Makefile, because make is not installed on Windows by default and Node already is. No dependencies of its own: every script shells out to go, docker or web/, so there is nothing to install here. Run dev:api and dev:web in two terminals.",
   "scripts": {
-    "dev": "concurrently -n api,web -c green,cyan \"npm:dev:api\" \"npm:dev:web\"",
     "dev:api": "go run ./cmd/server",
     "dev:web": "npm --prefix web run dev",
     "db:up": "docker compose up -d db",
@@ -23,8 +22,5 @@
     "record": "go run ./cmd/record",
     "build:pages": "npm --prefix web run build:pages",
     "preview:pages": "npm --prefix web run preview:pages"
-  },
-  "devDependencies": {
-    "concurrently": "^9.1.2"
   }
 }
