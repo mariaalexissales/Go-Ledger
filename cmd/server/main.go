@@ -5,17 +5,16 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"errors"
+	"fmt"
 	"log"
 	"net/http"
 	"os"
 	"os/signal"
-	"slices"
 	"syscall"
 	"time"
 
-	"github.com/joho/godotenv"
-
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/joho/godotenv"
 
 	"go-ledger/internal/api"
 	"go-ledger/internal/config"
@@ -27,13 +26,20 @@ import (
 )
 
 func main() {
-	args := os.Args[1:]
+	if err := run(os.Args[1:]); err != nil {
+		log.Printf("Error: %v", err)
+		os.Exit(1)
+	}
+}
 
-	// Runs before anything else: the container healthcheck uses this, and the
-	// distroless runtime image has no shell to curl with.
-	if slices.Contains(args, "healthcheck") {
-		runHealthcheck()
-		return
+// run dispatches on the subcommand, if any. Every path returns an error rather
+// than calling log.Fatalf, so the deferred cleanup in each actually runs.
+func run(args []string) error {
+	// The healthcheck runs before configuration is even loaded: the container
+	// healthcheck invokes it, the distroless runtime image has no shell to curl
+	// with, and it must not depend on a valid DATABASE_URL to report liveness.
+	if len(args) > 0 && args[0] == "healthcheck" {
+		return runHealthcheck()
 	}
 
 	// A missing .env is normal in a container, where configuration arrives as
@@ -46,17 +52,33 @@ func main() {
 
 	cfg, err := config.Load()
 	if err != nil {
-		log.Fatalf("Invalid configuration: %v", err)
+		return fmt.Errorf("invalid configuration: %w", err)
 	}
 
+	// Validated up here, with the rest of the configuration, so a typo fails
+	// before the process touches the database.
 	ipMode, err := ops.ParseClientIPMode(cfg.ClientIPMode)
 	if err != nil {
-		log.Fatalf("Invalid configuration: %v", err)
+		return fmt.Errorf("invalid configuration: %w", err)
+	}
+
+	// Matched exactly, not searched for anywhere in the argument list. The
+	// previous slices.Contains meant `server not-reset-actually-seed` reseeded
+	// the database.
+	var command string
+	if len(args) > 0 {
+		command = args[0]
+	}
+
+	switch command {
+	case "", "serve", "reset", "seed":
+	default:
+		return fmt.Errorf("unknown command %q (want serve, seed, reset or healthcheck)", command)
 	}
 
 	log.Println("Running migrations")
 	if err := db.RunMigrations(cfg.DatabaseURL); err != nil {
-		log.Fatalf("Failed to run migrations: %v", err)
+		return fmt.Errorf("run migrations: %w", err)
 	}
 
 	connectCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
@@ -64,47 +86,63 @@ func main() {
 	cancel()
 
 	if err != nil {
-		log.Fatalf("Failed to connect to database: %v", err)
+		return fmt.Errorf("connect to database: %w", err)
 	}
 	defer pool.Close()
 
-	wantsReset := slices.Contains(args, "reset")
-	wantsSeed := slices.Contains(args, "seed")
-
-	if wantsReset {
-		resetCtx, resetCancel := context.WithTimeout(context.Background(), 10*time.Second)
-
-		log.Println("Resetting accounts and transactions tables")
-		if err := seed.Reset(resetCtx, pool); err != nil {
-			resetCancel()
-			log.Fatalf("Failed to reset database: %v", err)
+	if command == "reset" {
+		if err := resetLedger(pool); err != nil {
+			return err
 		}
-
-		resetCancel()
 	}
 
-	if wantsSeed || cfg.SeedOnStart {
-		seedCtx, seedCancel := context.WithTimeout(context.Background(), 30*time.Second)
-
-		log.Println("Seeding database with fake data")
-		if err := seed.Run(seedCtx, pool, cfg.FakeSeed); err != nil {
-			seedCancel()
-			log.Fatalf("Failed to seed database: %v", err)
+	if command == "seed" || cfg.SeedOnStart {
+		if err := seedLedger(pool, cfg.FakeSeed); err != nil {
+			return err
 		}
-
-		seedCancel()
 	}
 
 	// Explicit CLI invocations are one-shot; SEED_ON_START is not.
-	if wantsReset || wantsSeed {
-		return
+	if command == "reset" || command == "seed" {
+		return nil
 	}
+
+	return serve(cfg, ipMode, pool)
+}
+
+func resetLedger(pool *pgxpool.Pool) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	log.Println("Resetting accounts and transactions tables")
+	if err := seed.Reset(ctx, pool); err != nil {
+		return fmt.Errorf("reset database: %w", err)
+	}
+	return nil
+}
+
+func seedLedger(pool *pgxpool.Pool, fakeSeed uint64) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	log.Println("Seeding database with fake data")
+	if err := seed.Run(ctx, pool, fakeSeed); err != nil {
+		return fmt.Errorf("seed database: %w", err)
+	}
+	return nil
+}
+
+func serve(cfg *config.Config, ipMode ops.ClientIPMode, pool *pgxpool.Pool) error {
+	var err error
 
 	// The demo token authorizes the trusted X-Demo-Client-IP channel. Generated
 	// per process and never persisted, so only the in-process runner holds it.
 	demoToken := ""
 	if cfg.DemosEnabled {
-		demoToken = randomToken()
+		demoToken, err = randomToken()
+		if err != nil {
+			return err
+		}
 	}
 
 	limiter := ops.NewRateLimiter(cfg.RateLimit, cfg.RateWindow, cfg.RateBlockPeriod)
@@ -175,9 +213,11 @@ func main() {
 	case <-time.After(5 * time.Second):
 		log.Println("Timed out flushing security events")
 	}
+
+	return nil
 }
 
-func runHealthcheck() {
+func runHealthcheck() error {
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "8080"
@@ -186,19 +226,20 @@ func runHealthcheck() {
 	client := &http.Client{Timeout: 3 * time.Second}
 	resp, err := client.Get("http://127.0.0.1:" + port + "/health")
 	if err != nil {
-		os.Exit(1)
+		return fmt.Errorf("healthcheck: %w", err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		os.Exit(1)
+		return fmt.Errorf("healthcheck: /health returned %d", resp.StatusCode)
 	}
+	return nil
 }
 
-func randomToken() string {
+func randomToken() (string, error) {
 	buf := make([]byte, 32)
 	if _, err := rand.Read(buf); err != nil {
-		log.Fatalf("Failed to generate demo token: %v", err)
+		return "", fmt.Errorf("generate demo token: %w", err)
 	}
-	return hex.EncodeToString(buf)
+	return hex.EncodeToString(buf), nil
 }
