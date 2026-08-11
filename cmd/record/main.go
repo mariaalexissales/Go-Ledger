@@ -98,6 +98,18 @@ func (r *recorder) run() error {
 		return fmt.Errorf("no demo scenarios available")
 	}
 
+	// Snapshot the ledger before running anything. It has to happen first: in
+	// remote-addr mode every demo request is attributed to the loopback address,
+	// so a run leaves 127.0.0.1 rate-limited for the whole block period -- and
+	// /api/accounts is behind the guard, unlike everything else the recorder
+	// touches. Reading it after the scenarios returns 429.
+	//
+	// Nothing is lost by moving it earlier, because scenarios only ever GET.
+	ledger, err := r.snapshotLedger()
+	if err != nil {
+		return err
+	}
+
 	log.Printf("Recording %d scenarios across %d client IP modes", len(demos.Data), len(modes))
 
 	for _, mode := range modes {
@@ -116,7 +128,7 @@ func (r *recorder) run() error {
 		}
 	}
 
-	return r.writeIndex(config, demos.Data)
+	return r.writeIndex(config, demos.Data, ledger)
 }
 
 // fixture is one scenario captured in one client IP mode.
@@ -210,17 +222,31 @@ type index struct {
 	Transactions []json.RawMessage `json:"transactions"`
 }
 
-func (r *recorder) writeIndex(config opsConfig, demos []demo.Meta) error {
+// ledgerSnapshot is the seed data the replay build serves on the ledger pages.
+type ledgerSnapshot struct {
+	Accounts     []json.RawMessage
+	Transactions []json.RawMessage
+}
+
+func (r *recorder) snapshotLedger() (ledgerSnapshot, error) {
+	var snap ledgerSnapshot
+
 	var accounts httpx.ListResponse[json.RawMessage]
 	if err := r.get("/api/accounts", url.Values{"limit": {"100"}}, &accounts); err != nil {
-		return fmt.Errorf("snapshot accounts: %w", err)
+		return snap, fmt.Errorf("snapshot accounts: %w", err)
 	}
 
 	var transactions httpx.ListResponse[json.RawMessage]
 	if err := r.get("/api/transactions", url.Values{"limit": {"200"}}, &transactions); err != nil {
-		return fmt.Errorf("snapshot transactions: %w", err)
+		return snap, fmt.Errorf("snapshot transactions: %w", err)
 	}
 
+	snap.Accounts = accounts.Data
+	snap.Transactions = transactions.Data
+	return snap, nil
+}
+
+func (r *recorder) writeIndex(config opsConfig, demos []demo.Meta, ledger ledgerSnapshot) error {
 	idx := index{
 		RecordedAt: time.Now().UTC(),
 		Modes:      modes,
@@ -229,8 +255,8 @@ func (r *recorder) writeIndex(config opsConfig, demos []demo.Meta) error {
 			RateLimit:    config.RateLimit,
 		},
 		Demos:        demos,
-		Accounts:     accounts.Data,
-		Transactions: transactions.Data,
+		Accounts:     ledger.Accounts,
+		Transactions: ledger.Transactions,
 	}
 
 	written, err := r.writeIfChanged("index.json", idx)
@@ -244,7 +270,7 @@ func (r *recorder) writeIndex(config opsConfig, demos []demo.Meta) error {
 	}
 
 	log.Printf("index.json: %d accounts, %d transactions (%s) in %s",
-		len(accounts.Data), len(transactions.Data), status, r.out)
+		len(idx.Accounts), len(idx.Transactions), status, r.out)
 	return nil
 }
 
