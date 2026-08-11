@@ -1,7 +1,7 @@
 package ops
 
 import (
-	"runtime"
+	"sync"
 	"testing"
 	"time"
 )
@@ -111,39 +111,62 @@ func TestRateLimiterSetPolicyClearsState(t *testing.T) {
 
 // The sweeper goroutine used to have no stop path at all: the ticker was never
 // stopped and the loop ran forever, so a RateLimiter could never be collected
-// and every test in this file leaked one. `go test -race` does not detect
-// goroutine leaks, so this counts them.
+// and every test in this file leaked one.
+//
+// Asserted through Close's own contract rather than by counting goroutines.
+// runtime.NumGoroutine() is an absolute number shared with every other test in
+// the package, so comparing it before and after is flaky by construction -- an
+// unrelated goroutine finishing mid-test moves it. Close blocking until the
+// sweeper has returned is both the stronger guarantee and the testable one.
 func TestRateLimiterCloseStopsTheSweeper(t *testing.T) {
-	baseline := runtime.NumGoroutine()
+	rl := NewRateLimiter(1, 10*time.Millisecond, time.Minute)
 
-	limiters := make([]*RateLimiter, 20)
-	for i := range limiters {
-		limiters[i] = NewRateLimiter(1, 10*time.Millisecond, time.Minute)
-	}
+	// Let it tick at least once, so this is not just testing a goroutine that
+	// never got scheduled.
+	time.Sleep(30 * time.Millisecond)
 
-	// Give them a moment to actually be scheduled, or the count below proves
-	// nothing.
-	time.Sleep(50 * time.Millisecond)
-	if got := runtime.NumGoroutine(); got < baseline+len(limiters) {
-		t.Fatalf("expected at least %d goroutines after constructing %d limiters, got %d",
-			baseline+len(limiters), len(limiters), got)
-	}
-
-	for _, rl := range limiters {
+	done := make(chan struct{})
+	go func() {
 		rl.Close()
-		// Idempotent: a double Close must not panic on a closed channel.
+		// Idempotent, and the second call must not panic on a closed channel or
+		// block forever waiting on an already-departed goroutine.
 		rl.Close()
+		close(done)
+	}()
+
+	select {
+	case <-done:
+	case <-time.After(2 * time.Second):
+		t.Fatal("Close did not return: the sweeper goroutine is still running")
 	}
 
-	// Each sweeper wakes on rl.done immediately, but the scheduler still needs a
-	// moment to run them.
-	deadline := time.Now().Add(2 * time.Second)
-	for runtime.NumGoroutine() > baseline && time.Now().Before(deadline) {
-		time.Sleep(10 * time.Millisecond)
+	// The sweeper has exited, so the ticker it owned is stopped too.
+	select {
+	case <-rl.stopped:
+	default:
+		t.Error("stopped channel is not closed after Close returned")
+	}
+}
+
+// Close must not deadlock when called from several goroutines at once.
+func TestRateLimiterCloseIsConcurrencySafe(t *testing.T) {
+	rl := NewRateLimiter(1, time.Minute, time.Minute)
+
+	var wg sync.WaitGroup
+	for range 8 {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			rl.Close()
+		}()
 	}
 
-	if got := runtime.NumGoroutine(); got > baseline {
-		t.Errorf("after closing %d limiters, goroutines are %d, want back down to %d",
-			len(limiters), got, baseline)
+	done := make(chan struct{})
+	go func() { wg.Wait(); close(done) }()
+
+	select {
+	case <-done:
+	case <-time.After(2 * time.Second):
+		t.Fatal("concurrent Close calls deadlocked")
 	}
 }

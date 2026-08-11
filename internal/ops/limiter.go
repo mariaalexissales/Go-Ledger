@@ -16,9 +16,10 @@ type RateLimiter struct {
 	blockPeriod time.Duration
 	blockedIPs  map[string]time.Time
 
-	// done stops the sweeper. Closed by Close, which is safe to call more than
-	// once.
+	// done tells the sweeper to stop; stopped is closed by the sweeper on its way
+	// out, so Close can report that it really has.
 	done      chan struct{}
+	stopped   chan struct{}
 	closeOnce sync.Once
 }
 
@@ -37,14 +38,18 @@ func NewRateLimiter(limit int, window time.Duration, blockPeriod time.Duration) 
 		blockPeriod: blockPeriod,
 		blockedIPs:  make(map[string]time.Time),
 		done:        make(chan struct{}),
+		stopped:     make(chan struct{}),
 	}
 	go rl.cleanup(window * 2)
 	return rl
 }
 
-// Close stops the sweeper goroutine. Idempotent.
+// Close stops the sweeper goroutine and waits for it to exit, so once Close
+// returns there is definitely nothing left running. Idempotent, and safe to call
+// concurrently: the second caller just waits on an already-closed channel.
 func (rl *RateLimiter) Close() {
 	rl.closeOnce.Do(func() { close(rl.done) })
+	<-rl.stopped
 }
 
 // Decision is the outcome of a single Allow check. It carries enough detail for
@@ -177,6 +182,7 @@ func (rl *RateLimiter) BlockedIPs() map[string]time.Time {
 func (rl *RateLimiter) cleanup(interval time.Duration) {
 	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
+	defer close(rl.stopped)
 
 	for {
 		select {
