@@ -1,7 +1,6 @@
 package api
 
 import (
-	"encoding/json"
 	"errors"
 	"net/http"
 	"strconv"
@@ -58,8 +57,7 @@ func (a *API) listAccounts(w http.ResponseWriter, r *http.Request) {
 func (a *API) createAccount(w http.ResponseWriter, r *http.Request) {
 	var req CreateAccountRequest
 
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		httpx.WriteError(w, http.StatusBadRequest, "invalid request body")
+	if !httpx.DecodeJSON(w, r, &req) {
 		return
 	}
 

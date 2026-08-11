@@ -76,7 +76,7 @@ func (c *Console) setClientIPMode(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		Mode string `json:"mode"`
 	}
-	if !decodeJSON(w, r, &req) {
+	if !httpx.DecodeJSON(w, r, &req) {
 		return
 	}
 
@@ -100,7 +100,7 @@ func (c *Console) setLimiterPolicy(w http.ResponseWriter, r *http.Request) {
 		Window      string `json:"window"`
 		BlockPeriod string `json:"block_period"`
 	}
-	if !decodeJSON(w, r, &req) {
+	if !httpx.DecodeJSON(w, r, &req) {
 		return
 	}
 
