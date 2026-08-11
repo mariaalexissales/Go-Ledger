@@ -6,9 +6,11 @@ import (
 	"strings"
 	"time"
 
+	"go-ledger/internal/db"
 	"go-ledger/internal/httpx"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -168,7 +170,9 @@ func (c *Console) listEvents(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	rows, err := c.db.Query(r.Context(), `
+	total := 0
+
+	events, err := db.Collect(r.Context(), c.db, `
 		SELECT id, timestamp, ip_address, action_type, flag_status, COUNT(*) OVER() AS total
 		FROM security_events
 		WHERE ($1 = '' OR flag_status = $1)
@@ -177,27 +181,15 @@ func (c *Console) listEvents(w http.ResponseWriter, r *http.Request) {
 		  AND ($4::timestamptz IS NULL OR timestamp >= $4::timestamptz)
 		ORDER BY timestamp DESC, id DESC
 		LIMIT $5 OFFSET $6
-	`, q.Get("flag_status"), ips, q.Get("action_type"), since, limit, offset)
+	`, func(row pgx.CollectableRow) (EventDTO, error) {
+		var e SecurityEvent
+		if err := row.Scan(&e.ID, &e.Timestamp, &e.IPAddress, &e.ActionType, &e.FlagStatus, &total); err != nil {
+			return EventDTO{}, err
+		}
+		return NewEventDTO(e), nil
+	}, q.Get("flag_status"), ips, q.Get("action_type"), since, limit, offset)
 
 	if err != nil {
-		httpx.WriteError(w, http.StatusInternalServerError, "failed to list security events")
-		return
-	}
-	defer rows.Close()
-
-	events := make([]EventDTO, 0, limit)
-	total := 0
-
-	for rows.Next() {
-		var e SecurityEvent
-		if err := rows.Scan(&e.ID, &e.Timestamp, &e.IPAddress, &e.ActionType, &e.FlagStatus, &total); err != nil {
-			httpx.WriteError(w, http.StatusInternalServerError, "failed to list security events")
-			return
-		}
-		events = append(events, NewEventDTO(e))
-	}
-
-	if rows.Err() != nil {
 		httpx.WriteError(w, http.StatusInternalServerError, "failed to list security events")
 		return
 	}
@@ -266,7 +258,7 @@ func (c *Console) getStats(w http.ResponseWriter, r *http.Request) {
 	resp.Totals[FlagAllowed] = allowed
 	resp.Totals[FlagBlocked] = blocked
 
-	topRows, err := c.db.Query(r.Context(), `
+	topIPs, err := db.Collect(r.Context(), c.db, `
 		SELECT ip_address,
 		       COUNT(*) AS total,
 		       COUNT(*) FILTER (WHERE flag_status = $2) AS blocked
@@ -275,25 +267,22 @@ func (c *Console) getStats(w http.ResponseWriter, r *http.Request) {
 		GROUP BY ip_address
 		ORDER BY total DESC, ip_address
 		LIMIT 10
-	`, since, FlagBlocked)
+	`, func(row pgx.CollectableRow) (ipStat, error) {
+		var s ipStat
+		err := row.Scan(&s.IPAddress, &s.Total, &s.Blocked)
+		return s, err
+	}, since, FlagBlocked)
 	if err != nil {
 		httpx.WriteError(w, http.StatusInternalServerError, "failed to compute security stats")
 		return
 	}
-	defer topRows.Close()
-
-	for topRows.Next() {
-		var s ipStat
-		if err := topRows.Scan(&s.IPAddress, &s.Total, &s.Blocked); err != nil {
-			httpx.WriteError(w, http.StatusInternalServerError, "failed to compute security stats")
-			return
-		}
-		resp.TopIPs = append(resp.TopIPs, s)
+	if topIPs != nil {
+		resp.TopIPs = topIPs
 	}
 
 	// generate_series produces a row per bucket, so quiet minutes appear as
 	// explicit zeros instead of gaps the chart would interpolate across.
-	bucketRows, err := c.db.Query(r.Context(), `
+	buckets, err := db.Collect(r.Context(), c.db, `
 		SELECT g.bucket,
 		       COUNT(e.id) FILTER (WHERE e.flag_status = $3) AS allowed,
 		       COUNT(e.id) FILTER (WHERE e.flag_status = $4) AS blocked
@@ -307,20 +296,17 @@ func (c *Console) getStats(w http.ResponseWriter, r *http.Request) {
 			AND e.timestamp < g.bucket + interval '1 minute'
 		GROUP BY g.bucket
 		ORDER BY g.bucket
-	`, since, time.Now(), FlagAllowed, FlagBlocked)
+	`, func(row pgx.CollectableRow) (bucketStat, error) {
+		var b bucketStat
+		err := row.Scan(&b.Bucket, &b.Allowed, &b.Blocked)
+		return b, err
+	}, since, time.Now(), FlagAllowed, FlagBlocked)
 	if err != nil {
 		httpx.WriteError(w, http.StatusInternalServerError, "failed to compute security stats")
 		return
 	}
-	defer bucketRows.Close()
-
-	for bucketRows.Next() {
-		var b bucketStat
-		if err := bucketRows.Scan(&b.Bucket, &b.Allowed, &b.Blocked); err != nil {
-			httpx.WriteError(w, http.StatusInternalServerError, "failed to compute security stats")
-			return
-		}
-		resp.Buckets = append(resp.Buckets, b)
+	if buckets != nil {
+		resp.Buckets = buckets
 	}
 
 	for ip, until := range c.guard.Limiter().BlockedIPs() {

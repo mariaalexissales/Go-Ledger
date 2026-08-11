@@ -4,15 +4,46 @@
 package db
 
 import (
+	"context"
 	"errors"
 	"net/url"
 
 	"github.com/golang-migrate/migrate/v4"
 	_ "github.com/golang-migrate/migrate/v4/database/pgx/v5"
 	"github.com/golang-migrate/migrate/v4/source/iofs"
+	"github.com/jackc/pgx/v5"
 
 	"go-ledger/internal/db/migrations"
 )
+
+// Querier is the query surface Collect needs. Satisfied by *pgxpool.Pool,
+// pgx.Tx and *pgx.Conn alike, so a helper does not force a caller to decide
+// whether it is inside a transaction.
+type Querier interface {
+	Query(ctx context.Context, sql string, args ...any) (pgx.Rows, error)
+}
+
+// Collect runs a query and gathers every row through scan.
+//
+// This exists because the three list endpoints had the same twenty lines each:
+// query, defer Close, a rows.Next loop, a rows.Err check, and the same error
+// message written out three separate times per handler. pgx.CollectRows already
+// closes the rows and folds rows.Err into its return, so all of that collapses
+// into one error path.
+//
+// For a paginated query, select COUNT(*) OVER() as the last column and have
+// scan write it into a variable captured from the caller -- see listAccounts.
+// That keeps the unpaginated total available without a second round trip, which
+// is why RowToStructByPos cannot be used here: the row is one column wider than
+// the struct.
+func Collect[T any](ctx context.Context, q Querier, sql string, scan func(pgx.CollectableRow) (T, error), args ...any) ([]T, error) {
+	rows, err := q.Query(ctx, sql, args...)
+	if err != nil {
+		return nil, err
+	}
+
+	return pgx.CollectRows(rows, scan)
+}
 
 // RunMigrations applies every pending migration. Migrations are embedded rather
 // than read from disk so the distroless image, which ships nothing but the

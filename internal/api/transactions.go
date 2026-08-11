@@ -12,6 +12,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 
+	"go-ledger/internal/db"
 	"go-ledger/internal/httpx"
 )
 
@@ -67,33 +68,21 @@ func (a *API) listAccountTransactions(w http.ResponseWriter, r *http.Request) {
 func (a *API) writeTransactionPage(w http.ResponseWriter, r *http.Request, accountID *int) {
 	page := parsePageParams(r)
 
-	rows, err := a.DB.Query(r.Context(), `
+	total := 0
+
+	transactions, err := db.Collect(r.Context(), a.DB, `
 		SELECT id, account_id, amount, timestamp, COUNT(*) OVER() AS total
 		FROM transactions
 		WHERE ($1::int IS NULL OR account_id = $1::int)
 		ORDER BY timestamp DESC, id DESC
 		LIMIT $2 OFFSET $3
-	`, accountID, page.Limit, page.Offset)
+	`, func(row pgx.CollectableRow) (Transaction, error) {
+		var txn Transaction
+		err := row.Scan(&txn.ID, &txn.AccountID, &txn.Amount, &txn.Timestamp, &total)
+		return txn, err
+	}, accountID, page.Limit, page.Offset)
 
 	if err != nil {
-		httpx.WriteError(w, http.StatusInternalServerError, "failed to list transactions")
-		return
-	}
-	defer rows.Close()
-
-	transactions := make([]Transaction, 0, page.Limit)
-	total := 0
-
-	for rows.Next() {
-		var txn Transaction
-		if err := rows.Scan(&txn.ID, &txn.AccountID, &txn.Amount, &txn.Timestamp, &total); err != nil {
-			httpx.WriteError(w, http.StatusInternalServerError, "failed to list transactions")
-			return
-		}
-		transactions = append(transactions, txn)
-	}
-
-	if rows.Err() != nil {
 		httpx.WriteError(w, http.StatusInternalServerError, "failed to list transactions")
 		return
 	}

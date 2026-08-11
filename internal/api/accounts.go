@@ -9,6 +9,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5"
 
+	"go-ledger/internal/db"
 	"go-ledger/internal/httpx"
 )
 
@@ -18,34 +19,23 @@ func (a *API) listAccounts(w http.ResponseWriter, r *http.Request) {
 	search := r.URL.Query().Get("q")
 
 	// COUNT(*) OVER() returns the unpaginated total alongside each row, which
-	// avoids a second round trip just to fill in the envelope.
-	rows, err := a.DB.Query(r.Context(), `
+	// avoids a second round trip just to fill in the envelope. It lands in
+	// total, captured by the scan closure below.
+	total := 0
+
+	accounts, err := db.Collect(r.Context(), a.DB, `
 		SELECT id, name, balance, created_at, COUNT(*) OVER() AS total
 		FROM accounts
 		WHERE ($1 = '' OR name ILIKE '%' || $1 || '%')
 		ORDER BY id
 		LIMIT $2 OFFSET $3
-	`, search, page.Limit, page.Offset)
+	`, func(row pgx.CollectableRow) (Account, error) {
+		var acc Account
+		err := row.Scan(&acc.ID, &acc.Name, &acc.Balance, &acc.CreatedAt, &total)
+		return acc, err
+	}, search, page.Limit, page.Offset)
 
 	if err != nil {
-		httpx.WriteError(w, http.StatusInternalServerError, "failed to list accounts")
-		return
-	}
-	defer rows.Close()
-
-	accounts := make([]Account, 0, page.Limit)
-	total := 0
-
-	for rows.Next() {
-		var acc Account
-		if err := rows.Scan(&acc.ID, &acc.Name, &acc.Balance, &acc.CreatedAt, &total); err != nil {
-			httpx.WriteError(w, http.StatusInternalServerError, "failed to list accounts")
-			return
-		}
-		accounts = append(accounts, acc)
-	}
-
-	if rows.Err() != nil {
 		httpx.WriteError(w, http.StatusInternalServerError, "failed to list accounts")
 		return
 	}
