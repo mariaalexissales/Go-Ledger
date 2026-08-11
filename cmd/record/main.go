@@ -1,6 +1,10 @@
 // Command record captures real demo runs from a running go-ledger server and
 // writes them to web/public/replay as JSON fixtures.
 //
+// The fixtures are what the GitHub Pages console replays, so they are recorded
+// rather than simulated: there is no second implementation of the limiter to
+// drift out of step with the Go one.
+//
 // Usage (with the server already running):
 //
 //	go run ./cmd/record
@@ -15,12 +19,20 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"time"
+
+	"go-ledger/internal/demo"
+	"go-ledger/internal/httpx"
+	"go-ledger/internal/ops"
 )
 
-var modes = []string{"xff-trust-all", "remote-addr"}
+// Recorded in both modes so the console can show the same scenario succeeding
+// and failing. Taken from the ops constants rather than string literals, so
+// adding a third mode is a compile error here instead of a silent omission.
+var modes = []ops.ClientIPMode{ops.ModeTrustXFF, ops.ModeRemoteAddr}
 
 func main() {
 	base := flag.String("base", "http://localhost:8080", "base URL of a running go-ledger server")
@@ -40,21 +52,31 @@ type recorder struct {
 	client *http.Client
 }
 
+// opsConfig is the part of GET /ops/config the recorder reads. Deliberately not
+// every field: see recordedConfig for what is kept.
+type opsConfig struct {
+	ClientIPMode ops.ClientIPMode `json:"client_ip_mode"`
+	RateLimit    ops.Policy       `json:"rate_limit"`
+	// Mutable is false when DEMOS_ENABLED=false, in which case there is nothing
+	// to record.
+	Mutable bool `json:"mutable"`
+}
+
 func (r *recorder) run() error {
 	if err := os.MkdirAll(r.out, 0o755); err != nil {
 		return fmt.Errorf("create output directory: %w", err)
 	}
 
-	var config map[string]any
+	var config opsConfig
 	if err := r.get("/ops/config", nil, &config); err != nil {
 		return fmt.Errorf("read /ops/config (is the server running?): %w", err)
 	}
 
-	if mutable, _ := config["mutable"].(bool); !mutable {
+	if !config.Mutable {
 		return fmt.Errorf("the server has DEMOS_ENABLED=false, so scenarios cannot be run or recorded")
 	}
 
-	originalMode, _ := config["client_ip_mode"].(string)
+	originalMode := config.ClientIPMode
 	// Leave the dev server exactly as it was found, including on failure.
 	// Otherwise the next manual test silently runs in the wrong mode.
 	defer func() {
@@ -68,12 +90,12 @@ func (r *recorder) run() error {
 		}
 	}()
 
-	var demos listEnvelope[map[string]any]
+	var demos httpx.ListResponse[demo.Meta]
 	if err := r.get("/ops/demos", nil, &demos); err != nil {
 		return fmt.Errorf("read /ops/demos: %w", err)
 	}
 	if len(demos.Data) == 0 {
-		return fmt.Errorf("no demo scenarios registered")
+		return fmt.Errorf("no demo scenarios available")
 	}
 
 	log.Printf("Recording %d scenarios across %d client IP modes", len(demos.Data), len(modes))
@@ -84,13 +106,12 @@ func (r *recorder) run() error {
 		}
 
 		for _, meta := range demos.Data {
-			id, _ := meta["id"].(string)
-			if id == "" {
+			if meta.ID == "" {
 				continue
 			}
 
-			if err := r.recordScenario(id, mode); err != nil {
-				return fmt.Errorf("record %s in %s: %w", id, mode, err)
+			if err := r.recordScenario(meta.ID, mode); err != nil {
+				return fmt.Errorf("record %s in %s: %w", meta.ID, mode, err)
 			}
 		}
 	}
@@ -100,12 +121,12 @@ func (r *recorder) run() error {
 
 // fixture is one scenario captured in one client IP mode.
 type fixture struct {
-	ScenarioID   string         `json:"scenario_id"`
-	ClientIPMode string         `json:"client_ip_mode"`
-	RecordedAt   time.Time      `json:"recorded_at"`
-	Result       map[string]any `json:"result"`
+	ScenarioID   string           `json:"scenario_id"`
+	ClientIPMode ops.ClientIPMode `json:"client_ip_mode"`
+	RecordedAt   time.Time        `json:"recorded_at"`
+	Result       demo.Result      `json:"result"`
 	// Events are the real security_events rows the run produced, oldest first.
-	Events []map[string]any `json:"events"`
+	Events []ops.EventDTO `json:"events"`
 }
 
 // volatileKeys are fields that differ on every recording without carrying any
@@ -119,12 +140,12 @@ var volatileKeys = map[string]bool{
 	"duration_ms": true,
 }
 
-func (r *recorder) recordScenario(id, mode string) error {
+func (r *recorder) recordScenario(id string, mode ops.ClientIPMode) error {
 	if err := r.post("/ops/events/reset", nil, nil); err != nil {
 		return fmt.Errorf("reset events: %w", err)
 	}
 
-	var result map[string]any
+	var result demo.Result
 	if err := r.post("/ops/demos/"+id+"/run", nil, &result); err != nil {
 		return fmt.Errorf("run scenario: %w", err)
 	}
@@ -133,8 +154,8 @@ func (r *recorder) recordScenario(id, mode string) error {
 	// land before reading the events back.
 	time.Sleep(500 * time.Millisecond)
 
-	var events listEnvelope[map[string]any]
-	if err := r.get("/ops/events", map[string]string{"limit": "500"}, &events); err != nil {
+	var events httpx.ListResponse[ops.EventDTO]
+	if err := r.get("/ops/events", url.Values{"limit": {"500"}}, &events); err != nil {
 		return fmt.Errorf("read events: %w", err)
 	}
 
@@ -161,36 +182,52 @@ func (r *recorder) recordScenario(id, mode string) error {
 	}
 
 	log.Printf("  %-14s %-14s %3d steps, %3d events  (%s)",
-		id, mode, countSteps(result), len(events.Data), status)
+		id, mode, len(result.Steps), len(events.Data), status)
 	return nil
+}
+
+// recordedConfig is the config as it lands in index.json: what describes the
+// recording, without the per-process fields the replay transport supplies
+// itself. Declaring the two that are kept beats listing the six that are
+// dropped -- adding a field to the server's response cannot silently leak into
+// a fixture. Mirrors the Omit<> in web/src/replay/fixtures.ts.
+type recordedConfig struct {
+	ClientIPMode ops.ClientIPMode `json:"client_ip_mode"`
+	RateLimit    ops.Policy       `json:"rate_limit"`
 }
 
 // index carries everything the console needs before any scenario is run.
 type index struct {
-	RecordedAt time.Time        `json:"recorded_at"`
-	Modes      []string         `json:"modes"`
-	Config     map[string]any   `json:"config"`
-	Demos      []map[string]any `json:"demos"`
+	RecordedAt time.Time          `json:"recorded_at"`
+	Modes      []ops.ClientIPMode `json:"modes"`
+	Config     recordedConfig     `json:"config"`
+	Demos      []demo.Meta        `json:"demos"`
 	// Seed data for the ledger pages, which have no backend in replay mode.
-	Accounts     []map[string]any `json:"accounts"`
-	Transactions []map[string]any `json:"transactions"`
+	// Kept as raw JSON so it is passed through byte for byte: account balances
+	// are pgtype.Numeric on the server, and there is no reason to risk a
+	// round-trip through it changing how a decimal is written.
+	Accounts     []json.RawMessage `json:"accounts"`
+	Transactions []json.RawMessage `json:"transactions"`
 }
 
-func (r *recorder) writeIndex(config map[string]any, demos []map[string]any) error {
-	var accounts listEnvelope[map[string]any]
-	if err := r.get("/api/accounts", map[string]string{"limit": "100"}, &accounts); err != nil {
+func (r *recorder) writeIndex(config opsConfig, demos []demo.Meta) error {
+	var accounts httpx.ListResponse[json.RawMessage]
+	if err := r.get("/api/accounts", url.Values{"limit": {"100"}}, &accounts); err != nil {
 		return fmt.Errorf("snapshot accounts: %w", err)
 	}
 
-	var transactions listEnvelope[map[string]any]
-	if err := r.get("/api/transactions", map[string]string{"limit": "200"}, &transactions); err != nil {
+	var transactions httpx.ListResponse[json.RawMessage]
+	if err := r.get("/api/transactions", url.Values{"limit": {"200"}}, &transactions); err != nil {
 		return fmt.Errorf("snapshot transactions: %w", err)
 	}
 
 	idx := index{
-		RecordedAt:   time.Now().UTC(),
-		Modes:        modes,
-		Config:       stripVolatile(config),
+		RecordedAt: time.Now().UTC(),
+		Modes:      modes,
+		Config: recordedConfig{
+			ClientIPMode: config.ClientIPMode,
+			RateLimit:    config.RateLimit,
+		},
 		Demos:        demos,
 		Accounts:     accounts.Data,
 		Transactions: transactions.Data,
@@ -211,25 +248,21 @@ func (r *recorder) writeIndex(config map[string]any, demos []map[string]any) err
 	return nil
 }
 
-type listEnvelope[T any] struct {
-	Data  []T `json:"data"`
-	Total int `json:"total"`
+func (r *recorder) setMode(mode ops.ClientIPMode) error {
+	return r.put("/ops/config/client-ip-mode", map[string]string{"mode": string(mode)}, nil)
 }
 
-func (r *recorder) setMode(mode string) error {
-	return r.put("/ops/config/client-ip-mode", map[string]string{"mode": mode}, nil)
-}
+// The HTTP helpers below are deliberately not internal/demo's Client: that one
+// exists to generate scenario traffic, so it attaches synthetic identity
+// headers and spends a per-run request budget. Neither belongs in a recorder,
+// which speaks to /ops as an ordinary operator would.
 
-func (r *recorder) get(path string, query map[string]string, dst any) error {
-	url := r.base + path
+func (r *recorder) get(path string, query url.Values, dst any) error {
+	target := r.base + path
 	if len(query) > 0 {
-		sep := "?"
-		for key, value := range query {
-			url += sep + key + "=" + value
-			sep = "&"
-		}
+		target += "?" + query.Encode()
 	}
-	return r.do(http.MethodGet, url, nil, dst)
+	return r.do(http.MethodGet, target, nil, dst)
 }
 
 func (r *recorder) post(path string, body, dst any) error {
@@ -240,7 +273,7 @@ func (r *recorder) put(path string, body, dst any) error {
 	return r.do(http.MethodPut, r.base+path, body, dst)
 }
 
-func (r *recorder) do(method, url string, body, dst any) error {
+func (r *recorder) do(method, target string, body, dst any) error {
 	var reader io.Reader
 	if body != nil {
 		encoded, err := json.Marshal(body)
@@ -250,7 +283,7 @@ func (r *recorder) do(method, url string, body, dst any) error {
 		reader = bytes.NewReader(encoded)
 	}
 
-	req, err := http.NewRequest(method, url, reader)
+	req, err := http.NewRequest(method, target, reader)
 	if err != nil {
 		return err
 	}
@@ -270,7 +303,7 @@ func (r *recorder) do(method, url string, body, dst any) error {
 	}
 
 	if resp.StatusCode >= 400 {
-		return fmt.Errorf("%s %s returned %d: %s", method, url, resp.StatusCode, bytes.TrimSpace(payload))
+		return fmt.Errorf("%s %s returned %d: %s", method, target, resp.StatusCode, bytes.TrimSpace(payload))
 	}
 
 	if dst == nil || len(bytes.TrimSpace(payload)) == 0 {
@@ -304,7 +337,9 @@ func (r *recorder) writeIfChanged(name string, v any) (bool, error) {
 }
 
 // meaningfullyEqual reports whether two encoded fixtures differ in anything
-// other than timing noise.
+// other than timing noise. Both sides are normalised through any, so key order
+// does not matter -- which is what lets the encoders change shape without
+// forcing a rewrite of every fixture.
 func meaningfullyEqual(a, b any) bool {
 	left, err := json.Marshal(withoutVolatile(a))
 	if err != nil {
@@ -344,28 +379,8 @@ func withoutVolatile(v any) any {
 	}
 }
 
-// stripVolatile removes per-process fields from the recorded config. They are
-// meaningless in a recording, since the replay transport overrides them, and
-// they would change on every run.
-func stripVolatile(config map[string]any) map[string]any {
-	cleaned := make(map[string]any, len(config))
-	for key, value := range config {
-		switch key {
-		case "your_ip", "remote_addr", "stream_subscribers", "dropped_events", "failed_events", "mutable":
-			continue
-		}
-		cleaned[key] = value
-	}
-	return cleaned
-}
-
 func reverse[T any](items []T) {
 	for i, j := 0, len(items)-1; i < j; i, j = i+1, j-1 {
 		items[i], items[j] = items[j], items[i]
 	}
-}
-
-func countSteps(result map[string]any) int {
-	steps, _ := result["steps"].([]any)
-	return len(steps)
 }
