@@ -83,7 +83,7 @@ func (a *API) writeTransactionPage(w http.ResponseWriter, r *http.Request, accou
 	}, accountID, page.Limit, page.Offset)
 
 	if err != nil {
-		httpx.WriteError(w, http.StatusInternalServerError, "failed to list transactions")
+		httpx.WriteServerError(w, r, "failed to list transactions", err)
 		return
 	}
 
@@ -141,7 +141,7 @@ func (a *API) createTransaction(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		httpx.WriteError(w, http.StatusInternalServerError, "failed to create transaction")
+		httpx.WriteServerError(w, r, "failed to create transaction", err)
 		return
 	}
 	httpx.WriteJSON(w, http.StatusCreated, txn)
@@ -168,7 +168,7 @@ func (a *API) getTransaction(w http.ResponseWriter, r *http.Request) {
 		if errors.Is(err, pgx.ErrNoRows) {
 			httpx.WriteError(w, http.StatusNotFound, "transaction not found")
 		} else {
-			httpx.WriteError(w, http.StatusInternalServerError, "failed to get transaction")
+			httpx.WriteServerError(w, r, "failed to get transaction", err)
 		}
 		return
 	}
@@ -202,7 +202,7 @@ func (a *API) deleteTransaction(w http.ResponseWriter, r *http.Request) {
 		if errors.Is(err, pgx.ErrNoRows) {
 			httpx.WriteError(w, http.StatusNotFound, "transaction not found")
 		} else {
-			httpx.WriteError(w, http.StatusInternalServerError, "failed to delete transaction")
+			httpx.WriteServerError(w, r, "failed to delete transaction", err)
 		}
 		return
 	}

@@ -1,6 +1,7 @@
 package ops
 
 import (
+	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
@@ -131,7 +132,7 @@ func (c *Console) resetEvents(w http.ResponseWriter, r *http.Request) {
 	// seed.Reset deliberately leaves security_events alone, so clearing the
 	// audit trail for a fresh demo needs its own path.
 	if _, err := c.db.Exec(r.Context(), "TRUNCATE security_events RESTART IDENTITY"); err != nil {
-		httpx.WriteError(w, http.StatusInternalServerError, "failed to reset security events")
+		httpx.WriteServerError(w, r, "failed to reset security events", err)
 		return
 	}
 
@@ -190,7 +191,7 @@ func (c *Console) listEvents(w http.ResponseWriter, r *http.Request) {
 	}, q.Get("flag_status"), ips, q.Get("action_type"), since, limit, offset)
 
 	if err != nil {
-		httpx.WriteError(w, http.StatusInternalServerError, "failed to list security events")
+		httpx.WriteServerError(w, r, "failed to list security events", err)
 		return
 	}
 
@@ -251,7 +252,7 @@ func (c *Console) getStats(w http.ResponseWriter, r *http.Request) {
 		WHERE timestamp >= $1
 	`, since, FlagAllowed, FlagBlocked).Scan(&allowed, &blocked, &resp.DistinctIPs)
 	if err != nil {
-		httpx.WriteError(w, http.StatusInternalServerError, "failed to compute security stats")
+		httpx.WriteServerError(w, r, "failed to compute security stats", fmt.Errorf("totals: %w", err))
 		return
 	}
 
@@ -273,7 +274,7 @@ func (c *Console) getStats(w http.ResponseWriter, r *http.Request) {
 		return s, err
 	}, since, FlagBlocked)
 	if err != nil {
-		httpx.WriteError(w, http.StatusInternalServerError, "failed to compute security stats")
+		httpx.WriteServerError(w, r, "failed to compute security stats", fmt.Errorf("top ips: %w", err))
 		return
 	}
 	if topIPs != nil {
@@ -302,7 +303,7 @@ func (c *Console) getStats(w http.ResponseWriter, r *http.Request) {
 		return b, err
 	}, since, time.Now(), FlagAllowed, FlagBlocked)
 	if err != nil {
-		httpx.WriteError(w, http.StatusInternalServerError, "failed to compute security stats")
+		httpx.WriteServerError(w, r, "failed to compute security stats", fmt.Errorf("buckets: %w", err))
 		return
 	}
 	if buckets != nil {

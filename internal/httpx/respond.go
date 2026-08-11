@@ -5,7 +5,10 @@ package httpx
 
 import (
 	"encoding/json"
+	"log"
 	"net/http"
+
+	"github.com/go-chi/chi/v5/middleware"
 )
 
 type errorResponse struct {
@@ -20,6 +23,22 @@ func WriteJSON(w http.ResponseWriter, status int, v any) {
 
 func WriteError(w http.ResponseWriter, status int, msg string) {
 	WriteJSON(w, status, errorResponse{Error: msg})
+}
+
+// WriteServerError sends a generic 500 to the client and logs the real cause.
+//
+// Not leaking database internals to a caller is right; discarding them is not.
+// Every 500 in this codebase used to do the latter, which made a production
+// failure impossible to diagnose from either side: the client sees "failed to
+// list accounts" and the server recorded nothing at all.
+//
+// The request id comes from chi's RequestID middleware, so the log line can be
+// tied back to a specific request.
+func WriteServerError(w http.ResponseWriter, r *http.Request, msg string, err error) {
+	log.Printf("500 %s %s [%s]: %s: %v",
+		r.Method, r.URL.Path, middleware.GetReqID(r.Context()), msg, err)
+
+	WriteError(w, http.StatusInternalServerError, msg)
 }
 
 // ListResponse is the envelope every collection endpoint returns, so clients

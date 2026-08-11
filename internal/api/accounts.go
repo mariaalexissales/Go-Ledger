@@ -36,7 +36,7 @@ func (a *API) listAccounts(w http.ResponseWriter, r *http.Request) {
 	}, search, page.Limit, page.Offset)
 
 	if err != nil {
-		httpx.WriteError(w, http.StatusInternalServerError, "failed to list accounts")
+		httpx.WriteServerError(w, r, "failed to list accounts", err)
 		return
 	}
 
@@ -65,7 +65,7 @@ func (a *API) createAccount(w http.ResponseWriter, r *http.Request) {
 	`, req.Name).Scan(&acc.ID, &acc.Name, &acc.Balance, &acc.CreatedAt)
 
 	if err != nil {
-		httpx.WriteError(w, http.StatusInternalServerError, "failed to create account")
+		httpx.WriteServerError(w, r, "failed to create account", err)
 		return
 	}
 
@@ -93,7 +93,7 @@ func (a *API) getAccount(w http.ResponseWriter, r *http.Request) {
 		if errors.Is(err, pgx.ErrNoRows) {
 			httpx.WriteError(w, http.StatusNotFound, "account not found")
 		} else {
-			httpx.WriteError(w, http.StatusInternalServerError, "failed to get account")
+			httpx.WriteServerError(w, r, "failed to get account", err)
 		}
 		return
 	}
@@ -115,7 +115,7 @@ func (a *API) deleteAccount(w http.ResponseWriter, r *http.Request) {
 	`, id)
 
 	if err != nil {
-		httpx.WriteError(w, http.StatusInternalServerError, "failed to delete account")
+		httpx.WriteServerError(w, r, "failed to delete account", err)
 		return
 	}
 

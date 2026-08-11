@@ -9,6 +9,7 @@ import (
 	"go-ledger/internal/ops"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/cors"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -41,6 +42,25 @@ type Deps struct {
 func NewRouter(d Deps) http.Handler {
 	a := &API{DB: d.Pool}
 	r := chi.NewRouter()
+
+	// Recoverer turns a handler panic into a 500 with a stack trace in the log.
+	// Without it a panic kills the connection with no response and no record.
+	//
+	// RequestID stamps each request with an id in its context. Nothing reads it
+	// off the wire -- chi puts it in the context, not a response header -- but
+	// httpx.WriteServerError logs it beside the underlying error, which is what
+	// lets a generic 500 seen by a client be matched to a line in the log.
+	r.Use(middleware.RequestID)
+	r.Use(middleware.Recoverer)
+
+	// Deliberately NOT middleware.RealIP. It rewrites r.RemoteAddr from
+	// X-Forwarded-For before anything else sees the request, which would make
+	// CLIENT_IP_MODE meaningless: remote-addr would silently become
+	// xff-trust-all, and the whole subject of this repo would quietly stop
+	// working. ops.Resolver owns that decision instead, on purpose.
+	//
+	// Also not middleware.Logger: it wraps the ResponseWriter, and the SSE
+	// handler depends on http.NewResponseController reaching the real one.
 
 	// Only needed in dev, where Vite serves the SPA from a different origin.
 	// In container mode the SPA is same-origin and this list is empty.
