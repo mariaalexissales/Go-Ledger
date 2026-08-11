@@ -146,6 +146,8 @@ func serve(cfg *config.Config, ipMode ops.ClientIPMode, pool *pgxpool.Pool) erro
 	}
 
 	limiter := ops.NewRateLimiter(cfg.RateLimit, cfg.RateWindow, cfg.RateBlockPeriod)
+	defer limiter.Close()
+
 	hub := ops.NewHub()
 	recorder := ops.NewRecorder(pool, hub)
 	resolver := ops.NewResolver(ipMode, demoToken)

@@ -15,13 +15,20 @@ type RateLimiter struct {
 	window      time.Duration
 	blockPeriod time.Duration
 	blockedIPs  map[string]time.Time
+
+	// done stops the sweeper. Closed by Close, which is safe to call more than
+	// once.
+	done      chan struct{}
+	closeOnce sync.Once
 }
 
-// NewRateLimiter initializes a RateLimiter and spawns a background goroutine
-// to periodically sweep andevict expired request records from memory.
-// - limit: Maximum allowed requests within the time window.
-// - window: Duration of the sliding tracking window.
-// - blockPeriod: How long an offending IP remains blocked.
+// NewRateLimiter initializes a RateLimiter and spawns a background goroutine to
+// periodically sweep and evict expired request records from memory. Call Close
+// when the limiter is no longer needed, or that goroutine and its ticker live
+// for the rest of the process.
+//   - limit: Maximum allowed requests within the time window.
+//   - window: Duration of the sliding tracking window.
+//   - blockPeriod: How long an offending IP remains blocked.
 func NewRateLimiter(limit int, window time.Duration, blockPeriod time.Duration) *RateLimiter {
 	rl := &RateLimiter{
 		requests:    make(map[string][]time.Time),
@@ -29,9 +36,15 @@ func NewRateLimiter(limit int, window time.Duration, blockPeriod time.Duration) 
 		window:      window,
 		blockPeriod: blockPeriod,
 		blockedIPs:  make(map[string]time.Time),
+		done:        make(chan struct{}),
 	}
 	go rl.cleanup(window * 2)
 	return rl
+}
+
+// Close stops the sweeper goroutine. Idempotent.
+func (rl *RateLimiter) Close() {
+	rl.closeOnce.Do(func() { close(rl.done) })
 }
 
 // Decision is the outcome of a single Allow check. It carries enough detail for
@@ -158,26 +171,41 @@ func (rl *RateLimiter) BlockedIPs() map[string]time.Time {
 	return out
 }
 
-// cleanup sweeps expired request records. The interval is passed in rather than
-// read from rl.window so the goroutine never touches shared state unguarded.
+// cleanup sweeps expired request records until the limiter is closed. The
+// initial interval is passed in rather than read from rl.window so the goroutine
+// never touches shared state unguarded.
 func (rl *RateLimiter) cleanup(interval time.Duration) {
 	ticker := time.NewTicker(interval)
-	for range ticker.C {
-		rl.mu.Lock()
-		now := time.Now()
-		for ip, timestamps := range rl.requests {
-			var valid []time.Time
-			for _, t := range timestamps {
-				if now.Sub(t) <= rl.window {
-					valid = append(valid, t)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-rl.done:
+			return
+
+		case <-ticker.C:
+			rl.mu.Lock()
+			now := time.Now()
+			for ip, timestamps := range rl.requests {
+				var valid []time.Time
+				for _, t := range timestamps {
+					if now.Sub(t) <= rl.window {
+						valid = append(valid, t)
+					}
+				}
+				if len(valid) > 0 {
+					rl.requests[ip] = valid
+				} else {
+					delete(rl.requests, ip)
 				}
 			}
-			if len(valid) > 0 {
-				rl.requests[ip] = valid
-			} else {
-				delete(rl.requests, ip)
-			}
+			// Follow the live window, so retuning the policy in the console
+			// retunes the sweep cadence with it instead of leaving it at
+			// whatever was configured at startup.
+			next := rl.window * 2
+			rl.mu.Unlock()
+
+			ticker.Reset(next)
 		}
-		rl.mu.Unlock()
 	}
 }
