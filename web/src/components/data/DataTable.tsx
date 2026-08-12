@@ -9,7 +9,6 @@ import TableContainer from '@mui/material/TableContainer'
 import TableHead from '@mui/material/TableHead'
 import TablePagination from '@mui/material/TablePagination'
 import TableRow from '@mui/material/TableRow'
-import type { SxProps, Theme } from '@mui/material/styles'
 import { EmptyState } from '@/components/feedback/States'
 
 /**
@@ -30,25 +29,20 @@ export interface Column<T> {
    */
   width?: number
   align?: 'left' | 'right' | 'center'
-  /** Defaults to `row[key]`. */
-  value?: (row: T) => unknown
   /**
-   * Formats the accessed value. Typed `never` so a call site can narrow it
-   * freely: `(v: string) => ...` is assignable, since parameters are checked
-   * contravariantly and `never` is assignable to everything. The one unsafe
-   * cast that buys is confined to `renderCell` below.
+   * Formats `row[key]`. Declared as a method rather than a property so a call
+   * site can narrow the parameter -- `format(value: string)` is assignable
+   * because method parameters stay bivariant under strictFunctionTypes, which
+   * property-style function types do not.
    */
-  format?: (value: never, row: T) => ReactNode
-  /** Full control over the cell. Wins over `value`/`format`. */
+  format?(value: unknown, row: T): ReactNode
+  /** Full control over the cell. Wins over `format`. */
   render?: (row: T) => ReactNode
-  cellSx?: SxProps<Theme>
 }
 
 export interface DataTableProps<T> {
   rows: readonly T[]
   columns: readonly Column<T>[]
-  /** Defaults to `row.id`. */
-  getRowId?: (row: T) => string | number
   loading?: boolean
   rowCount: number
   pagination: Pagination
@@ -68,8 +62,8 @@ export interface DataTableProps<T> {
 function renderCell<T>(column: Column<T>, row: T): ReactNode {
   if (column.render) return column.render(row)
 
-  const raw = column.value ? column.value(row) : (row as Record<string, unknown>)[column.key]
-  if (column.format) return column.format(raw as never, row)
+  const raw = (row as Record<string, unknown>)[column.key]
+  if (column.format) return column.format(raw, row)
 
   return raw as ReactNode
 }
@@ -77,7 +71,6 @@ function renderCell<T>(column: Column<T>, row: T): ReactNode {
 export function DataTable<T>({
   rows,
   columns,
-  getRowId = (row) => (row as { id: string | number }).id,
   loading = false,
   rowCount,
   pagination,
@@ -161,7 +154,7 @@ export function DataTable<T>({
 
             {rows.map((row) => (
               <TableRow
-                key={getRowId(row)}
+                key={(row as { id: string | number }).id}
                 hover={Boolean(onRowClick)}
                 onClick={onRowClick ? () => onRowClick(row) : undefined}
                 // A bare onClick on a row is mouse-only.
@@ -182,10 +175,7 @@ export function DataTable<T>({
                   <TableCell
                     key={column.key}
                     align={column.align}
-                    sx={[
-                      { overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
-                      ...(Array.isArray(column.cellSx) ? column.cellSx : [column.cellSx]),
-                    ]}
+                    sx={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
                   >
                     {renderCell(column, row)}
                   </TableCell>
