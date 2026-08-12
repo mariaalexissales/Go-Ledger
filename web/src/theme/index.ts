@@ -10,7 +10,6 @@ import {
   type EstralRamp,
 } from './tokens'
 
-export { monoFont } from './tokens'
 export { IP_RAMP_SIZE } from './tokens'
 
 declare module '@mui/material/styles' {

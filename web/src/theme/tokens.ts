@@ -20,8 +20,6 @@ export interface EstralRamp {
   void: string
   /** Panels, window fill. */
   substrate: string
-  /** Raised surface. */
-  surface: string
 
   /** Primary. All chrome: frames, rules, headers. */
   violet: string
@@ -58,9 +56,9 @@ export interface EstralRamp {
   blockedRow: string
 
   /**
-   * Table-row hover. Not `surface`.
+   * Table-row hover.
    *
-   * Light mode surfaces descend in lightness, so pressing a row down into
+   * Light mode surfaces descend in lightness, so pressing a row down toward
    * #DDD5EE drops readout text to 4.09:1 and gold to 3.79:1. There is no room
    * to nudge it either: readout needs a background luminance of 0.766 and the
    * paper is already at 0.796. Hover lifts in both modes instead, toward the
@@ -95,7 +93,6 @@ export interface EstralRamp {
 export const ESTRAL_DARK: EstralRamp = {
   void: '#0A0711',
   substrate: '#150E24',
-  surface: '#1E1433',
 
   violet: '#B78CFF',
   magenta: '#E85FFF',
@@ -130,10 +127,10 @@ export const ESTRAL_DARK: EstralRamp = {
 /**
  * Light mode.
  *
- * The surfaces descend in lightness here: page #F4F1FA, panels #EAE4F5, raised
- * #DDD5EE. Panels sit recessed into the page rather than lifted off it, which
- * inverts the usual Material stacking. That is why `hoverRow` lifts toward the
- * page ground instead of pressing down into `surface`.
+ * The surfaces descend in lightness here: page #F4F1FA, panels #EAE4F5. Panels
+ * sit recessed into the page rather than lifted off it, which inverts the usual
+ * Material stacking. That is why `hoverRow` lifts toward the page ground rather
+ * than pressing further down.
  *
  * `dim` has no authored light value. It is derived by lightening `ghost`
  * toward the paper until it reads as inactive.
@@ -141,7 +138,6 @@ export const ESTRAL_DARK: EstralRamp = {
 export const ESTRAL_LIGHT: EstralRamp = {
   void: '#F4F1FA',
   substrate: '#EAE4F5',
-  surface: '#DDD5EE',
 
   violet: '#5B2FBF',
   magenta: '#A81FB0',

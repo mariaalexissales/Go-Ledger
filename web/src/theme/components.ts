@@ -1,13 +1,13 @@
 import type { Components, Theme } from '@mui/material/styles'
-import { monoFont } from './tokens'
 
 /**
  * Component overrides. Styling belongs here rather than in `sx` props on route
  * files, which should only reach for semantic colors.
  *
- * Note that MUI's `shape.borderRadius` does not reach every component. Chip,
- * Alert, Tooltip, Skeleton and LinearProgress hardcode their own radius and
- * each need squaring off by hand below.
+ * `shape.borderRadius` is 0 (see ./index.ts) and almost every component reads
+ * it, so squaring things off by hand is unnecessary. Chip is the one exception:
+ * it hardcodes `32 / 2`. `typography.fontFamily` is likewise the mono face
+ * already, so per-component fontFamily is redundant too.
  */
 
 /**
@@ -90,7 +90,6 @@ export const components: Components<Omit<Theme, 'components'>> = {
     defaultProps: { elevation: 0, variant: 'outlined' },
     styleOverrides: {
       root: ({ theme }) => ({
-        borderRadius: 0,
         borderColor: v(theme).palette.estral.hairline,
         // Paper paints `--Paper-overlay`, a white gradient, at any elevation
         // above 0. Menu, Dialog, Popover and Select all hardcode elevation 8
@@ -98,12 +97,6 @@ export const components: Components<Omit<Theme, 'components'>> = {
         // overlay in the app. Gray is the one thing this palette does not have.
         backgroundImage: 'none',
       }),
-    },
-  },
-
-  MuiCard: {
-    styleOverrides: {
-      root: { position: 'relative' },
     },
   },
 
@@ -124,11 +117,12 @@ export const components: Components<Omit<Theme, 'components'>> = {
   },
 
   MuiAppBar: {
-    defaultProps: { elevation: 0, color: 'transparent' },
     styleOverrides: {
+      // Load-bearing. `color="default"` resolves to `palette.AppBar.defaultBg`,
+      // which MUI sets to grey[100] in light mode -- the one gray surface this
+      // palette does not want. Dark mode already lands on background.paper.
       root: ({ theme }) => ({
         backgroundColor: v(theme).palette.background.paper,
-        backgroundImage: 'none',
       }),
     },
   },
@@ -163,8 +157,9 @@ export const components: Components<Omit<Theme, 'components'>> = {
   MuiChip: {
     styleOverrides: {
       root: {
+        // Chip is the one component that hardcodes its radius (32 / 2) instead
+        // of reading shape.borderRadius.
         borderRadius: 0,
-        fontFamily: monoFont,
         letterSpacing: '.06em',
       },
       label: { textTransform: 'uppercase' },
@@ -189,7 +184,6 @@ export const components: Components<Omit<Theme, 'components'>> = {
     defaultProps: { disableElevation: true },
     styleOverrides: {
       root: {
-        borderRadius: 0,
         ...LABEL,
         letterSpacing: '.1em',
         fontSize: '.75rem',
@@ -200,7 +194,6 @@ export const components: Components<Omit<Theme, 'components'>> = {
   MuiAlert: {
     defaultProps: { variant: 'outlined' },
     styleOverrides: {
-      root: { borderRadius: 0 },
       message: { fontSize: '.8125rem' },
     },
     variants: [
@@ -229,7 +222,6 @@ export const components: Components<Omit<Theme, 'components'>> = {
     styleOverrides: {
       root: ({ theme }) => ({
         borderColor: v(theme).palette.estral.hairline,
-        fontFamily: monoFont,
         fontVariantNumeric: 'tabular-nums',
         fontSize: '.8125rem',
       }),
@@ -245,7 +237,7 @@ export const components: Components<Omit<Theme, 'components'>> = {
   MuiTableRow: {
     styleOverrides: {
       root: ({ theme }) => ({
-        // Not `surface`. Hover lifts in both schemes. See the note on
+        // Hover lifts in both schemes rather than pressing down. See the note on
         // `hoverRow` in tokens.ts for why pressing down fails in light mode.
         '&:hover': { backgroundColor: v(theme).palette.estral.hoverRow },
       }),
@@ -255,17 +247,15 @@ export const components: Components<Omit<Theme, 'components'>> = {
   MuiTablePagination: {
     styleOverrides: {
       selectLabel: { ...LABEL, fontSize: '.6875rem' },
-      displayedRows: { fontFamily: monoFont, fontSize: '.75rem' },
+      displayedRows: { fontSize: '.75rem' },
     },
   },
 
   MuiOutlinedInput: {
     styleOverrides: {
-      root: { borderRadius: 0 },
       notchedOutline: ({ theme }) => ({
         borderColor: v(theme).palette.estral.hairlineStrong,
       }),
-      input: { fontFamily: monoFont },
     },
   },
 
@@ -282,8 +272,6 @@ export const components: Components<Omit<Theme, 'components'>> = {
         // and it would be the only gray surface in the app.
         backgroundColor: v(theme).palette.estral.substrate,
         border: `1px solid ${v(theme).palette.primary.main}`,
-        borderRadius: 0,
-        fontFamily: monoFont,
         fontSize: '.6875rem',
         color: v(theme).palette.text.primary,
       }),
@@ -297,23 +285,9 @@ export const components: Components<Omit<Theme, 'components'>> = {
     },
   },
 
-  MuiSkeleton: {
-    styleOverrides: {
-      root: { borderRadius: 0 },
-    },
-  },
-
-  MuiLinearProgress: {
-    styleOverrides: {
-      root: { borderRadius: 0 },
-      bar: { borderRadius: 0 },
-    },
-  },
-
   MuiDialog: {
     styleOverrides: {
       paper: ({ theme }) => ({
-        borderRadius: 0,
         border: `1px solid ${v(theme).palette.estral.hairlineStrong}`,
         backgroundImage: 'none',
       }),
