@@ -63,52 +63,28 @@ Then open <http://localhost:8080>. Postgres comes up first, gated on a healthche
 Migrations run, 50 accounts and 200 transactions are seeded, and the Go binary serves
 both the API and the console on a single port, so no CORS is involved at all.
 
-> **First run after upgrading:** the compose file now mounts the Postgres volume at
-> `/var/lib/postgresql/data` instead of the parent directory. If you have an older
-> `pgdata` volume, Postgres will refuse to start on it. Run `docker compose down -v`
-> once to discard it. The data is regenerated seed data, and `SEED_ON_START=true`
-> refills it on the next boot.
-
 ### Development with hot reload
 
 ```bash
-npm run db:up
+npm run db:up          # Postgres only
+npm run dev:api        # terminal 1 — Go API on :8080
+npm run dev:web        # terminal 2 — Vite on :5173
 ```
 
-Then the API and the console in two terminals:
+Open <http://localhost:5173>. Vite proxies `/api` and `/ops` to the Go server, so the
+app behaves identically to the container build while keeping HMR. Two terminals because
+running both from one npm script needs a dependency, and PowerShell cannot portably
+background a process — the root `package.json` has no dependencies and needs no
+`npm install`.
 
-```bash
-npm run dev:api
-```
+Copy `.env.example` to `.env` if you want to change anything. A missing `.env` is not
+fatal, and real environment variables always win.
 
-```bash
-npm run dev:web
-```
-
-That puts the Go API on `:8080` and Vite on `:5173`. Open <http://localhost:5173>.
-Vite proxies `/api` and `/ops` to the Go server, so the app behaves identically to the
-container build while keeping HMR.
-
-Two terminals rather than one script: running both processes from a single npm script
-needs a dependency, and PowerShell has no portable way to background one. Nothing here
-needs `npm install` — the root `package.json` is a task runner with no dependencies of
-its own.
-
-Copy `.env.example` to `.env` first if you want to change anything. A missing `.env`
-is not fatal, and real environment variables always win.
-
-Other scripts: `npm run seed`, `npm run reset`, `npm run build`, `npm run fmt`,
-`npm run typecheck`, `npm test`, `npm run test:race`, `npm run db:down`, `npm run down`.
-
-`npm run lint` needs [golangci-lint](https://golangci-lint.run) on your PATH:
-
-```bash
-go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@latest
-```
-
-CI runs the same config, plus `go test ./... -race`. The race detector needs cgo,
-so it will not run locally without a C compiler — that is the one check only CI
-performs.
+Other scripts: `seed`, `reset`, `build`, `fmt`, `typecheck`, `test`, `test:race`,
+`db:down`, `down`. `npm run lint` wants [golangci-lint](https://golangci-lint.run)
+(`go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@latest`); CI runs
+the same config plus `go test ./... -race`, which needs cgo and so will not run locally
+without a C compiler.
 
 ---
 
@@ -143,13 +119,13 @@ deploying this anywhere reachable.
 
 ### Events reach the browser without polling
 
-Writing an audit row per request used to be a fire-and-forget goroutine, each taking
-its own pool connection. A burst demo exhausts that pool and silently drops the
-events the demo is meant to show. It now goes through a batching recorder
+Audit rows go through a batching recorder
 ([internal/ops/recorder.go](internal/ops/recorder.go)): one worker, a bounded queue,
-inserts of up to 200 rows at a time, published to subscribers only _after_ the insert
-so every streamed event carries a real database id. That id is what lets the browser
-reconnect with `Last-Event-ID` and have the gap replayed instead of lost.
+inserts of up to 200 rows at a time. Subscribers are published to only _after_ the
+insert, so every streamed event carries a real database id — which is what lets the
+browser reconnect with `Last-Event-ID` and have the gap replayed instead of lost. A
+goroutine per request would exhaust the pool during a burst and drop the very events
+the demo exists to show.
 
 ---
 
@@ -175,11 +151,10 @@ Flip **Trust X-Forwarded-For** off on the demos page and run `xff-spoof` again. 
 same 90 requests go from 0 blocked to 60 blocked, because the guard now uses the
 socket peer instead of a header the client controls.
 
-Scenarios other than `xff-spoof` keep working in both modes. They claim their
-identity over a separate token-gated channel: `X-Demo-Client-IP`, honored only for a
-loopback caller presenting a token generated in memory at startup. Only the spoof
-scenario uses the untrusted header, because testing whether the server believes it is
-the entire point.
+Other scenarios keep working in both modes: they claim identity over `X-Demo-Client-IP`,
+honored only for a loopback caller presenting a token generated in memory at startup.
+Only `xff-spoof` uses the untrusted header, because testing whether the server believes
+it is the entire point.
 
 ### Adding your own
 
@@ -236,13 +211,12 @@ real local server, captures each scenario's genuine run output along with the
 static build replays those recordings at a watchable speed.
 
 Recording rather than simulating means there is no second implementation of the rate
-limiter to drift away from the Go one. The numbers on the public demo are the numbers
-the real guard produced. Both client-IP modes are recorded, so the vulnerable and
-hardened toggle still works, and that is the most instructive part.
+limiter to drift from. The numbers on the public demo are the numbers the real guard
+produced, and both client-IP modes are recorded, so the vulnerable/hardened toggle
+still works.
 
-Two things are degraded, and the banner says so on every page. Ledger edits live in
-the browser tab and vanish on reload, and the limiter policy is fixed at recording
-time.
+Two things are degraded, and the banner says so on every page: ledger edits live in the
+browser tab and vanish on reload, and the limiter policy is fixed at recording time.
 
 **One-time setup:** in the repo settings, set **Pages → Source → GitHub Actions**. The
 workflow cannot do this for you. After that,
@@ -258,45 +232,33 @@ and boots the API, seeds the ledger, runs all five scenarios in both client-IP m
 commits the fresh fixtures back to `main`, and redeploys Pages. Nothing to install
 locally. Two inputs:
 
-- **fake_seed** seeds the fake ledger. The same value always produces the same 50
-  accounts, so leave it alone unless you deliberately want different names.
+- **fake_seed** makes the fake ledger reproducible — the same value always gives the
+  same 50 accounts, so leave it alone unless you want different names.
 - **deploy** can be unticked to record and commit without publishing.
 
-**Re-running with no code changes produces no commit.** Every run measures slightly
-different millisecond timings over loopback, so the recorder compares against the
-committed fixture ignoring timestamps and durations, and leaves the file alone when
-nothing meaningful changed. Change a scenario and the affected fixtures update. Change
-nothing and the workflow reports "nothing to do". Those timings stay in the committed
-files, since they drive the replay pacing and they are real measurements. They just do
-not count as a change.
+**Re-running with no code changes produces no commit.** The recorder diffs against the
+committed fixture ignoring timestamps and durations, so the millisecond noise of a
+fresh run does not count as a change. The timings stay in the file — they drive the
+replay pacing — they just do not trigger a write.
 
 To record and preview locally instead:
 
 ```bash
-npm run record
-```
-
-```bash
+npm run record         # needs the API running
 npm run build:pages
+npm run preview:pages  # http://localhost:4173/Go-Ledger/
 ```
 
-```bash
-npm run preview:pages
-```
+Stop the Go server before checking — serving with no backend at all is the real test.
+That path comes from `VITE_BASE` in [web/.env.pages](web/.env.pages) and must match the
+repository name, since Pages puts it in front of every asset URL; set it to `/` for a
+user page or custom domain. The router base path and the fixture URLs both derive from
+it.
 
-That serves the static bundle at <http://localhost:4173/Go-Ledger/> with no backend
-running at all, which is the real test. Stop the Go server before checking. The path
-comes from `VITE_BASE` in `web/.env.pages` and must match the repository name, since
-that is what GitHub Pages puts in front of every asset URL.
-
-A deep link like `/Go-Ledger/demos` answers with an HTTP 404 status even though the
-page renders correctly. That is unavoidable on Pages, which has no history fallback:
-the build copies `index.html` to `404.html`, Pages serves that for any unknown path,
-and the SPA boots and routes on the real URL. Only the status line is wrong.
-
-Moving to a user page or a custom domain? Change `VITE_BASE` in
-[web/.env.pages](web/.env.pages) to `/`. The router base path and fixture URLs both
-derive from it.
+One quirk worth not chasing: a deep link like `/Go-Ledger/demos` returns an HTTP 404
+_status_ while rendering correctly. Pages has no history fallback, so the build copies
+`index.html` to `404.html` and the SPA boots and routes on the real URL. Only the status
+line is wrong.
 
 ---
 
@@ -330,7 +292,7 @@ raw bytes to the Postgres numeric parser, so `"100.50"` is rejected as an invali
 | GET    | `/ops/events`                | `flag_status`, `ip_address` (comma-separated), `action_type`, `since`, `limit`, `offset` |
 | GET    | `/ops/events/stream`         | SSE, honors `Last-Event-ID`, heartbeats every 15s                                       |
 | GET    | `/ops/stats`                 | `window`, totals, top IPs, per-minute buckets, currently-blocked IPs                    |
-| GET    | `/ops/demos`                 | Scenario registry                                                                       |
+| GET    | `/ops/demos`                 | The five scenarios and their metadata                                                   |
 | POST   | `/ops/demos/{id}/run`        | Returns the full step list and a verdict                                                |
 | PUT    | `/ops/config/client-ip-mode` | `{"mode": "xff-trust-all" \| "remote-addr"}`                                            |
 | PUT    | `/ops/config/limiter-policy` | `{"limit": 30, "window": "10s", "block_period": "30s"}`                                 |
@@ -342,22 +304,17 @@ The three mutating routes exist only when `DEMOS_ENABLED=true`.
 
 ## Configuration
 
-Every value has a working default except `DATABASE_URL`. See
-[.env.example](.env.example).
+Every value has a working default except `DATABASE_URL`. The full list, with defaults
+and the reasoning behind each, lives in [.env.example](.env.example) — copy it to `.env`
+and edit. It is the only copy on purpose: this section used to restate the table and had
+already drifted out of date against
+[internal/config/config.go](internal/config/config.go), which is where the defaults
+actually come from.
 
-| Variable               | Default                 | Purpose                                                     |
-| ---------------------- | ----------------------- | ----------------------------------------------------------- |
-| `DATABASE_URL`         | _(required)_            | Postgres connection string                                  |
-| `PORT`                 | `8080`                  |                                                             |
-| `CORS_ALLOWED_ORIGINS` | `http://localhost:5173` | Comma-separated, empty disables CORS                        |
-| `CLIENT_IP_MODE`       | `xff-trust-all`         | Or `remote-addr` to close the header hole                   |
-| `RATE_LIMIT`           | `30`                    | Requests per window, per IP                                 |
-| `RATE_WINDOW`          | `10s`                   |                                                             |
-| `RATE_BLOCK_PERIOD`    | `30s`                   | How long an offender stays blocked                          |
-| `OPS_ENABLED`          | `true`                  | The `/ops` plane. **No auth, disable in production.**       |
-| `DEMOS_ENABLED`        | `true`                  | The scenario runner. **Generates load on request.**         |
-| `SEED_ON_START`        | `false`                 | Fills an empty database on boot, idempotent                 |
-| `SPA_DIR`              | _(empty)_               | Serve a built console from disk instead of the embedded one |
+Two worth knowing before you deploy anything: `CLIENT_IP_MODE` defaults to
+`xff-trust-all`, which is the deliberate vulnerability, and `OPS_ENABLED` /
+`DEMOS_ENABLED` default to `true` and have no authentication behind them. See
+[SECURITY.md](SECURITY.md).
 
 CLI: `go run ./cmd/server seed`, `... reset`, `... healthcheck`.
 
@@ -391,10 +348,8 @@ Replay mode has two _transport_ seams, which is the whole reason it is cheap: th
 `src/features/security/useEventStream.tsx`. No feature module, query hook or table knows
 which build it is running in.
 
-The flag is read in three more places, all of them wording rather than behaviour:
-`ReplayBanner`, plus a handful of copy branches in `routes/demos.tsx` and
-`routes/__root.tsx` that say "recording" instead of "live". Those are deliberate — a
-mode-copy indirection would make the routes harder to read than the ternaries do.
+It is read in three more files, but only to choose wording — "recording" instead of
+"live" — which is left inline deliberately: a mode-copy module would read worse.
 
 The frontend layering is deliberate and worth keeping: components import
 `*.queries.ts`, never `*.api.ts`. The API modules are pure transport with no React in
@@ -408,7 +363,14 @@ npm run build
 ```
 
 Produces `bin/server` — `bin/server.exe` on Windows — with the console embedded.
-`//go:embed` fails at compile time
-when `dist/` is missing, so the embed lives behind an `embed_spa` build tag. That way
-`go build ./...` and `go test ./...` still work on a fresh clone with no Node
-installed.
+`//go:embed` fails at compile time when `dist/` is missing, so the embed lives behind an
+`embed_spa` build tag. That way `go build ./...` and `go test ./...` still work on a
+fresh clone with no Node installed.
+
+---
+
+## License
+
+[MIT](LICENSE). The deliberate `X-Forwarded-For` vulnerability is documented in
+[SECURITY.md](SECURITY.md) — read that before lifting
+[internal/ops/clientip.go](internal/ops/clientip.go) into anything real.
