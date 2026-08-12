@@ -1,7 +1,10 @@
 # syntax=docker/dockerfile:1
 
+# Kept in step with .nvmrc and the CI workflows, which read the same file.
+ARG NODE_VERSION=22
+
 # --- Stage 1: build the React console -----------------------------------------
-FROM node:22-alpine AS web
+FROM node:${NODE_VERSION}-alpine AS web
 WORKDIR /web
 
 COPY web/package.json web/package-lock.json ./
@@ -17,7 +20,11 @@ WORKDIR /src
 COPY go.mod go.sum ./
 RUN go mod download
 
-COPY . .
+# Just the Go tree. Copying everything would drag web/ in for nothing, since the
+# built console arrives from the web stage below rather than being built here.
+COPY cmd/ ./cmd/
+COPY internal/ ./internal/
+
 # vite.config.ts writes to ../internal/spa/dist, which resolves to
 # /internal/spa/dist in the web stage. Copy it where //go:embed expects it.
 COPY --from=web /internal/spa/dist ./internal/spa/dist
@@ -26,6 +33,8 @@ RUN CGO_ENABLED=0 go build -tags embed_spa -trimpath -ldflags="-s -w" -o /out/se
 
 # --- Stage 3: runtime ---------------------------------------------------------
 FROM gcr.io/distroless/static-debian12:nonroot
+
+LABEL org.opencontainers.image.title="go-ledger"       org.opencontainers.image.description="Ledger API demonstrating IP rate limiting and X-Forwarded-For trust"       org.opencontainers.image.source="https://github.com/mariaalexissales/Go-Ledger"       org.opencontainers.image.licenses="MIT"
 
 COPY --from=build /out/server /server
 

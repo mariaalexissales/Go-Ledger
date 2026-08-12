@@ -1,7 +1,6 @@
 services:
   db:
     image: postgres:17-alpine
-    container_name: go_ledger_db
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: password
@@ -17,12 +16,14 @@ services:
       interval: 5s
       timeout: 3s
       retries: 10
+    # Matches the app below. Without it a host reboot brings the API back up
+    # against a database that is not running.
+    restart: unless-stopped
 
   app:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: go_ledger_app
     depends_on:
       db:
         condition: service_healthy
