@@ -156,7 +156,9 @@ function SecurityPage() {
             />
           </Stack>
 
-          {history.isError && <ErrorState error={history.error} onRetry={() => history.refetch()} />}
+          {history.isError && (
+            <ErrorState error={history.error} onRetry={() => history.refetch()} />
+          )}
 
           <Card>
             <DataTable

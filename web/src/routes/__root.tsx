@@ -44,8 +44,9 @@ function AppShell() {
 
   // Longest matching prefix, so /accounts/3 still highlights Accounts.
   const active =
-    NAV.filter((item) => item.to === '/' ? pathname === '/' : pathname.startsWith(item.to))
-      .sort((a, b) => b.to.length - a.to.length)[0]?.to ?? '/'
+    NAV.filter((item) => (item.to === '/' ? pathname === '/' : pathname.startsWith(item.to))).sort(
+      (a, b) => b.to.length - a.to.length,
+    )[0]?.to ?? '/'
 
   return (
     // No background here on purpose. The page ground, texture and radial
@@ -53,7 +54,12 @@ function AppShell() {
     <Box sx={{ minHeight: '100vh' }}>
       <ReplayBanner />
 
-      <AppBar position="sticky" color="default" elevation={0} sx={{ borderBottom: 1, borderColor: 'divider' }}>
+      <AppBar
+        position="sticky"
+        color="default"
+        elevation={0}
+        sx={{ borderBottom: 1, borderColor: 'divider' }}
+      >
         <Toolbar sx={{ gap: 2 }}>
           <Typography variant="h3" component="span" sx={{ mr: 1 }}>
             go-ledger
@@ -61,13 +67,7 @@ function AppShell() {
 
           <Tabs value={active} sx={{ flex: 1, minHeight: 48 }}>
             {NAV.map((item) => (
-              <Tab
-                key={item.to}
-                value={item.to}
-                label={item.label}
-                component={Link}
-                to={item.to}
-              />
+              <Tab key={item.to} value={item.to} label={item.label} component={Link} to={item.to} />
             ))}
           </Tabs>
 
@@ -98,11 +98,7 @@ function StreamIndicator() {
 
   return (
     <Tooltip
-      title={
-        REPLAY
-          ? 'Recorded events, replayed locally'
-          : 'Live security event stream (SSE)'
-      }
+      title={REPLAY ? 'Recorded events, replayed locally' : 'Live security event stream (SSE)'}
     >
       <Chip
         size="small"

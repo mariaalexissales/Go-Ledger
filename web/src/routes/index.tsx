@@ -68,7 +68,9 @@ function DashboardPage() {
           value={totals.BLOCKED.toLocaleString()}
           color="error.main"
           icon={<BlockIcon fontSize="small" color="error" />}
-          hint={blocked_now.length > 0 ? `${blocked_now.length} IP(s) blocked right now` : undefined}
+          hint={
+            blocked_now.length > 0 ? `${blocked_now.length} IP(s) blocked right now` : undefined
+          }
         />
         <StatCard
           label="Source IPs"
@@ -85,7 +87,11 @@ function DashboardPage() {
       {config.data && (
         <Card>
           <CardContent>
-            <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} sx={{ alignItems: { md: 'center' } }}>
+            <Stack
+              direction={{ xs: 'column', md: 'row' }}
+              spacing={2}
+              sx={{ alignItems: { md: 'center' } }}
+            >
               <Chip
                 label={`client IP mode: ${config.data.client_ip_mode}`}
                 color={config.data.client_ip_mode === 'xff-trust-all' ? 'warning' : 'success'}
@@ -165,7 +171,12 @@ function DashboardPage() {
           ) : (
             <Stack spacing={1}>
               {top_ips.map((ip) => (
-                <Stack key={ip.ip_address} direction="row" spacing={2} sx={{ alignItems: 'center' }}>
+                <Stack
+                  key={ip.ip_address}
+                  direction="row"
+                  spacing={2}
+                  sx={{ alignItems: 'center' }}
+                >
                   <Box component="span" sx={{ minWidth: 150, color: ipColor(ip.ip_address) }}>
                     {ip.ip_address}
                   </Box>

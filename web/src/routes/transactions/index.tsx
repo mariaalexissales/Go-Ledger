@@ -41,10 +41,7 @@ function TransactionsPage() {
       header: 'Account',
       width: 110,
       render: (row) => (
-        <Link
-          to="/accounts/$accountId"
-          params={{ accountId: String(row.account_id) }}
-        >
+        <Link to="/accounts/$accountId" params={{ accountId: String(row.account_id) }}>
           #{row.account_id}
         </Link>
       ),
@@ -55,10 +52,7 @@ function TransactionsPage() {
       width: 160,
       align: 'right',
       render: (row) => (
-        <Box
-          component="span"
-          sx={{ color: (row.amount ?? 0) < 0 ? 'error.main' : 'success.main' }}
-        >
+        <Box component="span" sx={{ color: (row.amount ?? 0) < 0 ? 'error.main' : 'success.main' }}>
           {formatMoney(row.amount)}
         </Box>
       ),

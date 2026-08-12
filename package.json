@@ -11,6 +11,7 @@
     "reset": "go run ./cmd/server reset",
     "build": "npm --prefix web run build && go build -tags embed_spa -o bin/server ./cmd/server",
     "typecheck": "npm --prefix web run typecheck",
+    "format": "npm --prefix web run format",
     "test": "go test ./... && npm --prefix web run test",
     "test:race": "go test ./... -race",
     "fmt": "gofmt -w cmd internal",

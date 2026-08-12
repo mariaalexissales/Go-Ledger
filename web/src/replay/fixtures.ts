@@ -10,7 +10,12 @@ interface ReplayIndex {
   /** Per-process fields are stripped by the recorder; the transport fills them in. */
   config: Omit<
     OpsConfig,
-    'your_ip' | 'remote_addr' | 'mutable' | 'stream_subscribers' | 'dropped_events' | 'failed_events'
+    | 'your_ip'
+    | 'remote_addr'
+    | 'mutable'
+    | 'stream_subscribers'
+    | 'dropped_events'
+    | 'failed_events'
   >
   demos: DemoMeta[]
   accounts: Account[]

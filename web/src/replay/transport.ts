@@ -36,7 +36,6 @@ export async function replayRequest<T>(
 }
 
 async function route(method: string, path: string, query: Params, body: unknown): Promise<unknown> {
-
   if (path === '/api/accounts' && method === 'GET') {
     const rows = await replayLedger.listAccounts(str(query.q))
     return paginate(rows, query, LEDGER_PAGE.fallback, LEDGER_PAGE.max)

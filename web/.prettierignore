@@ -1,0 +1,9 @@
+# Written by the TanStack Router plugin, and its own header asks to be excluded
+# from linting and formatting.
+src/routeTree.gen.ts
+
+# Build output and recorded fixtures.
+dist
+dist-pages
+public/replay
+.tanstack

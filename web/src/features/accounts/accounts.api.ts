@@ -11,7 +11,8 @@ export const accountsApi = {
   list: (params: AccountListParams, signal?: AbortSignal) =>
     api.get<ListResponse<Account>>('/api/accounts', params, signal),
 
-  get: (id: number, signal?: AbortSignal) => api.get<Account>(`/api/accounts/${id}`, undefined, signal),
+  get: (id: number, signal?: AbortSignal) =>
+    api.get<Account>(`/api/accounts/${id}`, undefined, signal),
 
   listTransactions: (id: number, params: TransactionListParams, signal?: AbortSignal) =>
     api.get<ListResponse<Transaction>>(`/api/accounts/${id}/transactions`, params, signal),

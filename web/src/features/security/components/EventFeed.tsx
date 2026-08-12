@@ -52,7 +52,7 @@ function EventRow({ event }: { event: SecurityEvent }) {
         bgcolor: event.blocked ? 'estral.blockedRow' : 'transparent',
       }}
     >
-      <Typography component="span" sx={{ fontSize:12, color: 'text.secondary' }}>
+      <Typography component="span" sx={{ fontSize: 12, color: 'text.secondary' }}>
         {formatTime(event.timestamp)}
       </Typography>
 
@@ -60,7 +60,7 @@ function EventRow({ event }: { event: SecurityEvent }) {
         size="small"
         label={event.ip_address}
         sx={{
-            fontSize: 11,
+          fontSize: 11,
           height: 20,
           bgcolor: 'transparent',
           border: '1px solid',
@@ -69,7 +69,7 @@ function EventRow({ event }: { event: SecurityEvent }) {
         }}
       />
 
-      <Typography component="span" sx={{ fontSize:13, flex: 1, minWidth: 0 }} noWrap>
+      <Typography component="span" sx={{ fontSize: 13, flex: 1, minWidth: 0 }} noWrap>
         <Box component="span" sx={{ fontWeight: 600, mr: 0.75 }}>
           {event.method}
         </Box>

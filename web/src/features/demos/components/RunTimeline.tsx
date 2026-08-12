@@ -26,10 +26,22 @@ export function RunTimeline({ result }: { result: DemoResult }) {
   )
 }
 
-function Counter({ label, value, color }: { label: string; value: string | number; color?: string }) {
+function Counter({
+  label,
+  value,
+  color,
+}: {
+  label: string
+  value: string | number
+  color?: string
+}) {
   return (
     <Box>
-      <Typography variant="overline" color="text.secondary" sx={{ display: 'block', lineHeight: 1.2 }}>
+      <Typography
+        variant="overline"
+        color="text.secondary"
+        sx={{ display: 'block', lineHeight: 1.2 }}
+      >
         {label}
       </Typography>
       <Typography variant="h2" sx={{ color, fontVariantNumeric: 'tabular-nums' }}>
@@ -43,11 +55,7 @@ function StepRow({ step }: { step: DemoStep }) {
   // A step with no method is an annotation the scenario wrote, not a request.
   if (!step.method) {
     return (
-      <Typography
-        variant="caption"
-        color="text.disabled"
-        sx={{ px: 1, py: 0.5 }}
-      >
+      <Typography variant="caption" color="text.disabled" sx={{ px: 1, py: 0.5 }}>
         # {step.note}
       </Typography>
     )
@@ -79,7 +87,7 @@ function StepRow({ step }: { step: DemoStep }) {
         label={step.client_ip}
         title={step.spoofed ? 'Claimed via X-Forwarded-For' : 'Trusted demo identity'}
         sx={{
-            fontSize: 11,
+          fontSize: 11,
           height: 19,
           bgcolor: 'transparent',
           border: '1px solid',
@@ -89,7 +97,10 @@ function StepRow({ step }: { step: DemoStep }) {
         }}
       />
 
-      <Box component="span" sx={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis' }}>
+      <Box
+        component="span"
+        sx={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis' }}
+      >
         <strong>{step.method}</strong> {step.path}
       </Box>
 

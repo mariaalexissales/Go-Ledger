@@ -69,9 +69,7 @@ describe('ipColor', () => {
   })
 
   it('spreads different addresses across more than one slot', () => {
-    const seen = new Set(
-      Array.from({ length: 40 }, (_, i) => ipColor(`198.51.100.${i}`)),
-    )
+    const seen = new Set(Array.from({ length: 40 }, (_, i) => ipColor(`198.51.100.${i}`)))
     expect(seen.size).toBeGreaterThan(1)
   })
 })

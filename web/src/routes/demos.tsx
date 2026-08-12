@@ -19,7 +19,11 @@ import {
 } from '@mui/material'
 import RestartAltIcon from '@mui/icons-material/RestartAlt'
 import { demosQueries, useRunDemo } from '@/features/demos/demos.queries'
-import { securityQueries, useResetEvents, useSetClientIPMode } from '@/features/security/security.queries'
+import {
+  securityQueries,
+  useResetEvents,
+  useSetClientIPMode,
+} from '@/features/security/security.queries'
 import { ScenarioCard } from '@/features/demos/components/ScenarioCard'
 import { RunTimeline } from '@/features/demos/components/RunTimeline'
 import { EventFeed } from '@/features/security/components/EventFeed'
@@ -71,7 +75,11 @@ function DemosPage() {
       </Box>
 
       <Paper variant="outlined" sx={{ p: 2 }}>
-        <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} sx={{ alignItems: { md: 'center' } }}>
+        <Stack
+          direction={{ xs: 'column', md: 'row' }}
+          spacing={2}
+          sx={{ alignItems: { md: 'center' } }}
+        >
           <FormControlLabel
             control={
               <Switch
@@ -180,8 +188,8 @@ function DemosPage() {
                   </Typography>
                   {REPLAY && (
                     <Typography variant="caption" component="p" sx={{ mt: 1, opacity: 0.8 }}>
-                      The server handled this in {result.summary.duration_ms} ms. The replay above is
-                      stretched out so it can be watched.
+                      The server handled this in {result.summary.duration_ms} ms. The replay above
+                      is stretched out so it can be watched.
                     </Typography>
                   )}
                 </Alert>

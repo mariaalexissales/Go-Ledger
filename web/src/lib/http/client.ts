@@ -86,8 +86,7 @@ export const api = {
     request<T>(path, { method: 'POST', body, signal }),
   put: <T>(path: string, body?: unknown, signal?: AbortSignal) =>
     request<T>(path, { method: 'PUT', body, signal }),
-  delete: <T>(path: string, signal?: AbortSignal) =>
-    request<T>(path, { method: 'DELETE', signal }),
+  delete: <T>(path: string, signal?: AbortSignal) => request<T>(path, { method: 'DELETE', signal }),
 }
 
 /** Shared envelope for every collection endpoint. */

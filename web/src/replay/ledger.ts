@@ -80,8 +80,7 @@ class ReplayLedger {
 
     // Matches the server: newest first, id as the tiebreaker.
     return [...matches].sort(
-      (a, b) =>
-        new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime() || b.id - a.id,
+      (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime() || b.id - a.id,
     )
   }
 

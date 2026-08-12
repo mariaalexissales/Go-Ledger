@@ -39,10 +39,7 @@ function AccountsPage() {
       width: 150,
       align: 'right',
       render: (row) => (
-        <Box
-          component="span"
-          sx={{ color: (row.balance ?? 0) < 0 ? 'error.main' : 'inherit' }}
-        >
+        <Box component="span" sx={{ color: (row.balance ?? 0) < 0 ? 'error.main' : 'inherit' }}>
           {formatMoney(row.balance)}
         </Box>
       ),
@@ -119,7 +116,9 @@ function AccountsPage() {
             navigate({ to: '/accounts/$accountId', params: { accountId: String(row.id) } })
           }
           emptyTitle="No accounts"
-          emptyDescription={search ? 'Nothing matches that name.' : 'Seed the ledger to get started.'}
+          emptyDescription={
+            search ? 'Nothing matches that name.' : 'Seed the ledger to get started.'
+          }
           minWidth={640}
         />
       </Card>

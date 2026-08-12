@@ -1,12 +1,4 @@
-import {
-  Button,
-  Card,
-  CardActions,
-  CardContent,
-  Chip,
-  Stack,
-  Typography,
-} from '@mui/material'
+import { Button, Card, CardActions, CardContent, Chip, Stack, Typography } from '@mui/material'
 import PlayArrowIcon from '@mui/icons-material/PlayArrow'
 import WarningAmberIcon from '@mui/icons-material/WarningAmber'
 import type { DemoMeta } from '../demos.types'

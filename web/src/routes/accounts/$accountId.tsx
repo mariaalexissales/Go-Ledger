@@ -47,10 +47,7 @@ function AccountDetailPage() {
       width: 160,
       align: 'right',
       render: (row) => (
-        <Box
-          component="span"
-          sx={{ color: (row.amount ?? 0) < 0 ? 'error.main' : 'success.main' }}
-        >
+        <Box component="span" sx={{ color: (row.amount ?? 0) < 0 ? 'error.main' : 'success.main' }}>
           {formatMoney(row.amount)}
         </Box>
       ),
