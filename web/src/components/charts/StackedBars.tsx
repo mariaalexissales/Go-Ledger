@@ -8,13 +8,13 @@ import { visuallyHidden } from '@mui/utils'
  * A stacked bar chart, in about a page of SVG.
  */
 
-export interface Band {
+interface Band {
   label: string
   /** One entry per series, in the same order. */
   values: readonly number[]
 }
 
-export interface Serie {
+interface Serie {
   label: string
   /** Any CSS color. A `var(...)` reference is fine, see the note below. */
   color: string
@@ -53,14 +53,12 @@ export function StackedBars({
   series,
   height = 260,
   label,
-  valueLabel = 'requests',
 }: {
   bands: readonly Band[]
   series: readonly Serie[]
   height?: number
   /** Accessible name. Required, since a bare SVG is invisible to screen readers. */
   label: string
-  valueLabel?: string
 }) {
   const ref = useRef<HTMLDivElement>(null)
   const width = useWidth(ref)
@@ -92,7 +90,7 @@ export function StackedBars({
   const summary = [
     series.map((serie, s) => `${seriesTotals[s]} ${serie.label.toLowerCase()}`).join(', '),
     `across ${shown.length} ${shown.length === 1 ? 'bucket' : 'buckets'}.`,
-    peakBand ? `Peak ${peak} ${valueLabel} at ${peakBand.label}.` : '',
+    peakBand ? `Peak ${peak} requests at ${peakBand.label}.` : '',
   ]
     .filter(Boolean)
     .join(' ')

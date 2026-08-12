@@ -124,7 +124,6 @@ function DashboardPage() {
           <CardContent>
             {buckets.length > 0 ? (
               <StackedBars
-                height={260}
                 label={`Requests per minute, last ${stats.data.window}`}
                 series={[
                   // Cyan is the readout color: an allowed request is the guard

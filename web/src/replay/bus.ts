@@ -12,7 +12,7 @@ const MIN_WINDOW_MS = 2000
 const MAX_WINDOW_MS = 5000
 const MS_PER_EVENT = 30
 
-export interface Pacing {
+interface Pacing {
   /** How long the run actually took on the server. */
   recordedMs: number
   /** How long the replay took here. */

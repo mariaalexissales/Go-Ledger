@@ -40,7 +40,7 @@ export interface Column<T> {
   render?: (row: T) => ReactNode
 }
 
-export interface DataTableProps<T> {
+interface DataTableProps<T> {
   rows: readonly T[]
   columns: readonly Column<T>[]
   loading?: boolean

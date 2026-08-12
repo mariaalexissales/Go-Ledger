@@ -17,7 +17,7 @@ import { replayBus } from '@/replay/bus'
 /** How many live events to keep in memory before dropping the oldest. */
 const MAX_LIVE_EVENTS = 500
 
-export type StreamStatus = 'connecting' | 'open' | 'error'
+type StreamStatus = 'connecting' | 'open' | 'error'
 
 interface EventStreamValue {
   events: SecurityEvent[]

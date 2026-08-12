@@ -29,7 +29,7 @@ export interface DemoStep {
 }
 
 /** Mirrors demo.Summary. */
-export interface DemoSummary {
+interface DemoSummary {
   sent: number
   allowed: number
   blocked: number

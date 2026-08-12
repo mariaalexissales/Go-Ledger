@@ -16,8 +16,8 @@ export interface EventListParams {
   flag_status?: string
   /** Comma-separated set, so the demos page can scope the feed to one run. */
   ip_address?: string
+  /** Served by the Go handler and the replay transport; no UI sends it yet. */
   action_type?: string
-  since?: string
 }
 
 export interface LimiterPolicy {
@@ -40,19 +40,19 @@ export interface OpsConfig {
   failed_events: number
 }
 
-export interface IpStat {
+interface IpStat {
   ip_address: string
   total: number
   blocked: number
 }
 
-export interface BucketStat {
+interface BucketStat {
   bucket: string
   allowed: number
   blocked: number
 }
 
-export interface BlockedIp {
+interface BlockedIp {
   ip_address: string
   until: string
 }

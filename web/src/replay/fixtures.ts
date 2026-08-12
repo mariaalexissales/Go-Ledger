@@ -4,7 +4,7 @@ import type { DemoMeta, DemoResult } from '@/features/demos/demos.types'
 import type { ClientIPMode, OpsConfig, SecurityEvent } from '@/features/security/security.types'
 
 /** Written by cmd/record. See web/public/replay/. */
-export interface ReplayIndex {
+interface ReplayIndex {
   recorded_at: string
   modes: ClientIPMode[]
   /** Per-process fields are stripped by the recorder; the transport fills them in. */
@@ -17,7 +17,7 @@ export interface ReplayIndex {
   transactions: Transaction[]
 }
 
-export interface ReplayFixture {
+interface ReplayFixture {
   scenario_id: string
   client_ip_mode: ClientIPMode
   recorded_at: string
