@@ -1,7 +1,7 @@
 import { queryOptions, useMutation, useQueryClient } from '@tanstack/react-query'
 import { qk } from '@/lib/queryKeys'
 import { securityApi } from './security.api'
-import type { ClientIPMode, EventListParams, LimiterPolicy } from './security.types'
+import type { ClientIPMode, EventListParams } from './security.types'
 
 export const securityQueries = {
   events: (params: EventListParams) =>
@@ -31,18 +31,6 @@ export function useSetClientIPMode() {
 
   return useMutation({
     mutationFn: (mode: ClientIPMode) => securityApi.setClientIPMode(mode),
-    onSuccess: (config) => {
-      queryClient.setQueryData(qk.security.config(), config)
-      queryClient.invalidateQueries({ queryKey: qk.security.all })
-    },
-  })
-}
-
-export function useSetLimiterPolicy() {
-  const queryClient = useQueryClient()
-
-  return useMutation({
-    mutationFn: (policy: LimiterPolicy) => securityApi.setLimiterPolicy(policy),
     onSuccess: (config) => {
       queryClient.setQueryData(qk.security.config(), config)
       queryClient.invalidateQueries({ queryKey: qk.security.all })

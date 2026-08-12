@@ -7,9 +7,15 @@ import { replayBus } from './bus'
 import { replayLedger } from './ledger'
 
 /**
- * The replay transport mirrors the Go router's route table and returns the same
- * JSON shapes. Everything above it stays identical in both builds: the feature
- * api modules, the query hooks and the components.
+ * The replay transport answers the subset of the Go router's route table that
+ * the console actually calls, returning the same JSON shapes. Everything above
+ * it stays identical in both builds: the feature api modules, the query hooks
+ * and the components.
+ *
+ * Deliberately a subset, not a mirror. An endpoint the UI never reaches for is
+ * a second implementation with nothing exercising it, so it drifts from the Go
+ * handler unnoticed. If you add a call in a feature api module, add the route
+ * here too -- nothing enforces the pairing.
  */
 
 let mode: ClientIPMode | null = null
@@ -82,12 +88,6 @@ async function route(method: string, path: string, query: Params, body: unknown)
   if (transaction) {
     const id = Number(transaction[1])
 
-    if (method === 'GET') {
-      const found = await replayLedger.getTransaction(id)
-      if (!found) throw new ApiError(404, 'transaction not found')
-      return found
-    }
-
     if (method === 'DELETE') {
       if (!(await replayLedger.deleteTransaction(id))) {
         throw new ApiError(404, 'transaction not found')
@@ -107,13 +107,6 @@ async function route(method: string, path: string, query: Params, body: unknown)
     mode = next
     reset()
     return currentConfig()
-  }
-
-  if (path === '/ops/config/limiter-policy' && method === 'PUT') {
-    throw new ApiError(
-      409,
-      'The limiter policy is fixed in the recorded demo. Clone the repo and run it locally to change it.',
-    )
   }
 
   if (path === '/ops/events' && method === 'GET') {

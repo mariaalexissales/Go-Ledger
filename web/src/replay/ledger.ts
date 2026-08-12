@@ -85,11 +85,6 @@ class ReplayLedger {
     )
   }
 
-  async getTransaction(id: number): Promise<Transaction | undefined> {
-    await this.ensureLoaded()
-    return this.transactions.find((transaction) => transaction.id === id)
-  }
-
   async createTransaction(accountId: number, amount: number): Promise<Transaction | null> {
     await this.ensureLoaded()
 

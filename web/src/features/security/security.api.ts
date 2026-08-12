@@ -2,7 +2,6 @@ import { api, apiUrl, type ListResponse } from '@/lib/http/client'
 import type {
   ClientIPMode,
   EventListParams,
-  LimiterPolicy,
   OpsConfig,
   SecurityEvent,
   SecurityStats,
@@ -20,11 +19,8 @@ export const securityApi = {
   setClientIPMode: (mode: ClientIPMode) =>
     api.put<OpsConfig>('/ops/config/client-ip-mode', { mode }),
 
-  setLimiterPolicy: (policy: LimiterPolicy) =>
-    api.put<OpsConfig>('/ops/config/limiter-policy', policy),
-
   resetEvents: () => api.post<void>('/ops/events/reset'),
 
   /** URL for the EventSource subscription; the browser opens it directly. */
-  streamUrl: (params?: EventListParams) => apiUrl('/ops/events/stream', params),
+  streamUrl: () => apiUrl('/ops/events/stream'),
 }
