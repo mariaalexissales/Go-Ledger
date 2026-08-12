@@ -16,7 +16,6 @@ export interface EventListParams {
   flag_status?: string
   /** Comma-separated set, so the demos page can scope the feed to one run. */
   ip_address?: string
-  /** Served by the Go handler and the replay transport; no UI sends it yet. */
   action_type?: string
 }
 

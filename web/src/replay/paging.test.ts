@@ -1,11 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { EVENTS_PAGE, LEDGER_PAGE, clampInt, paginate } from './paging'
 
-/**
- * These assertions are a contract against the Go server, not just against this
- * module. parsePageParams in internal/api/params.go must agree, and nothing
- * else checks that it does.
- */
 describe('clampInt', () => {
   it('returns the fallback when the value is absent or unparseable', () => {
     expect(clampInt(undefined, 25, 100)).toBe(25)
@@ -17,8 +12,6 @@ describe('clampInt', () => {
   })
 
   it('rejects zero and negatives in favour of the fallback', () => {
-    // Matching Go: `n > 0` gates the assignment, so 0 and -5 keep the default
-    // rather than producing an empty or reversed page.
     expect(clampInt(0, 25, 100)).toBe(25)
     expect(clampInt(-5, 25, 100)).toBe(25)
   })
@@ -42,8 +35,6 @@ describe('paginate', () => {
   const rows = Array.from({ length: 30 }, (_, i) => i)
 
   it('reports the unpaginated total alongside the page', () => {
-    // The envelope's `total` is what drives the pager, so it must be the full
-    // count and not the slice length.
     const page = paginate(rows, { limit: 10 }, 25, 100)
     expect(page.data).toEqual([0, 1, 2, 3, 4, 5, 6, 7, 8, 9])
     expect(page.total).toBe(30)

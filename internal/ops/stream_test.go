@@ -50,8 +50,6 @@ func TestParseEventFilterAndMatches(t *testing.T) {
 			wantBlocked: true,
 		},
 		{
-			// An empty value must mean "no filter" rather than "match nothing",
-			// or a cleared input box in the UI would silently blank the feed.
 			name:        "an empty ip_address is not a filter",
 			query:       "?ip_address=",
 			wantAllowed: true,
@@ -101,15 +99,11 @@ func TestLastEventID(t *testing.T) {
 			want: 0,
 		},
 		{
-			// The browser resends Last-Event-ID automatically when an SSE
-			// connection drops. That is the gap-fill path.
 			name:   "the Last-Event-ID header is used",
 			header: "42",
 			want:   42,
 		},
 		{
-			// EventSource cannot set headers, so a client that reconnects by
-			// hand needs the query fallback.
 			name:  "since_id is the fallback when the header is absent",
 			query: "?since_id=17",
 			want:  17,
@@ -173,8 +167,6 @@ func TestNewEventDTOSplitsActionType(t *testing.T) {
 			wantPath:   "/api/accounts",
 		},
 		{
-			// The stored column is free text, so a value with no space has to
-			// degrade to a bare path rather than swallowing it into Method.
 			name:       "no space leaves the whole value as the path",
 			actionType: "/api/accounts",
 			flagStatus: FlagAllowed,
@@ -218,8 +210,6 @@ func TestNewEventDTOSplitsActionType(t *testing.T) {
 			if got.Blocked != tt.wantBlocked {
 				t.Errorf("Blocked = %v, want %v", got.Blocked, tt.wantBlocked)
 			}
-			// ActionType is preserved alongside the split so a client can show
-			// the original string if it wants to.
 			if got.ActionType != tt.actionType {
 				t.Errorf("ActionType = %q, want it preserved as %q", got.ActionType, tt.actionType)
 			}

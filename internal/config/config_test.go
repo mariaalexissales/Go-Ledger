@@ -6,9 +6,6 @@ import (
 	"time"
 )
 
-// setEnv points every variable Load reads at a known state. t.Setenv restores
-// the previous values, and an empty string is how these helpers spell "unset"
-// for everything except CORS_ALLOWED_ORIGINS.
 func setEnv(t *testing.T, overrides map[string]string) {
 	t.Helper()
 
@@ -43,8 +40,6 @@ func TestLoadDefaults(t *testing.T) {
 		t.Fatalf("Load() error = %v", err)
 	}
 
-	// These are the values a fresh clone runs on, and the ones the README and
-	// .env.example document. Changing one should break this test.
 	if cfg.Port != "8080" {
 		t.Errorf("Port = %q, want 8080", cfg.Port)
 	}
@@ -153,8 +148,6 @@ func TestLoadOverrides(t *testing.T) {
 	}
 }
 
-// A malformed bool is deliberately not an error: it falls back rather than
-// refusing to boot over a typo in an optional flag.
 func TestLoadUnparseableBoolFallsBack(t *testing.T) {
 	setEnv(t, map[string]string{"OPS_ENABLED": "yes-please"})
 
@@ -179,9 +172,6 @@ func TestLoadCORSOrigins(t *testing.T) {
 			want: []string{"http://localhost:5173"},
 		},
 		{
-			// This is how the container build disables CORS: the SPA is served
-			// from the same origin, so no headers are wanted at all. An unset
-			// variable and an explicitly empty one must not mean the same thing.
 			name: "explicitly empty means no origins",
 			set:  true,
 			v:    "",
@@ -198,10 +188,6 @@ func TestLoadCORSOrigins(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			setEnv(t, nil)
 
-			// envStringSlice distinguishes unset from empty via os.LookupEnv, so
-			// the two cases need genuinely different environments. t.Setenv can
-			// only assign, but calling it first registers the cleanup that
-			// restores the original value after os.Unsetenv.
 			t.Setenv("CORS_ALLOWED_ORIGINS", tt.v)
 			if !tt.set {
 				if err := os.Unsetenv("CORS_ALLOWED_ORIGINS"); err != nil {
@@ -227,8 +213,6 @@ func TestLoadCORSOrigins(t *testing.T) {
 }
 
 func TestLoadTrimsSPADir(t *testing.T) {
-	// A stray trailing space in a .env file becomes a path that does not exist,
-	// and the server silently falls back to the placeholder page.
 	setEnv(t, map[string]string{"SPA_DIR": "  ./web/dist  "})
 
 	cfg, err := Load()

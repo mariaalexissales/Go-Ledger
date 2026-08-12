@@ -14,10 +14,6 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-// API carries what the ledger handlers need. Queries run against the pool
-// directly rather than through a repository layer: the SQL is the interesting
-// part of these handlers, and hiding it behind an interface would add a layer
-// without making anything testable, since a fake would still need a live pool.
 type API struct {
 	DB *pgxpool.Pool
 }
@@ -43,19 +39,15 @@ func NewRouter(d Deps) http.Handler {
 	a := &API{DB: d.Pool}
 	r := chi.NewRouter()
 
-	// Recoverer turns a handler panic into a 500; without it the connection dies
-	// with no response and no log line. RequestID's id is read back by
-	// httpx.WriteServerError, which is what ties a generic 500 to a log entry.
 	r.Use(middleware.RequestID)
 	r.Use(middleware.Recoverer)
 
-	// Deliberately NOT middleware.RealIP: it rewrites RemoteAddr from
-	// X-Forwarded-For before anything else sees the request, which would silently
-	// turn remote-addr into xff-trust-all and make CLIENT_IP_MODE -- the subject
-	// of this repo -- meaningless. ops.Resolver owns that decision.
+	// Deliberately NOT middleware.RealIP: it would rewrite RemoteAddr from
+	// X-Forwarded-For, turning remote-addr into xff-trust-all and making
+	// CLIENT_IP_MODE meaningless. ops.Resolver owns that decision.
 	//
-	// Nor middleware.Logger, which wraps the ResponseWriter the SSE handler needs
-	// http.NewResponseController to reach.
+	// Nor middleware.Logger: it wraps the ResponseWriter that the SSE handler
+	// reaches through http.NewResponseController.
 
 	// Only needed in dev, where Vite serves the SPA from a different origin.
 	// In container mode the SPA is same-origin and this list is empty.

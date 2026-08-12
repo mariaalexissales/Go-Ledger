@@ -56,9 +56,7 @@ export interface EstralRamp {
   blockedRow: string
 
   /**
-   * Table-row hover.
    *
-   * Light mode surfaces descend in lightness, so pressing a row down toward
    * #DDD5EE drops readout text to 4.09:1 and gold to 3.79:1. There is no room
    * to nudge it either: readout needs a background luminance of 0.766 and the
    * paper is already at 0.796. Hover lifts in both modes instead, toward the
@@ -127,10 +125,6 @@ export const ESTRAL_DARK: EstralRamp = {
 /**
  * Light mode.
  *
- * The surfaces descend in lightness here: page #F4F1FA, panels #EAE4F5. Panels
- * sit recessed into the page rather than lifted off it, which inverts the usual
- * Material stacking. That is why `hoverRow` lifts toward the page ground rather
- * than pressing further down.
  *
  * `dim` has no authored light value. It is derived by lightening `ghost`
  * toward the paper until it reads as inactive.

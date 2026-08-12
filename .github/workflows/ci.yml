@@ -1,8 +1,5 @@
 name: CI
 
-# The checks that have to pass before anything lands. Split into two jobs
-# because the Go and web toolchains share nothing and there is no reason for a
-# failing TypeScript build to hide a failing Go test.
 on:
   push:
     branches: [main]
@@ -11,8 +8,6 @@ on:
 permissions:
   contents: read
 
-# Deliberately not the "pages" group used by pages.yml and record.yml: those
-# queue against the Pages API, while these checks should run immediately.
 concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
@@ -28,28 +23,20 @@ jobs:
           go-version-file: go.mod
           cache: true
 
-      # No -tags embed_spa: internal/spa/embed_on.go embeds all:dist, which
-      # does not exist until the web build has run.
       - name: Build
         run: go build ./...
 
       - name: Vet
         run: go vet ./...
 
-      # gofmt -l prints offending files but still exits 0, so the exit status
-      # has to come from testing that its output was empty.
+      # gofmt -l prints offending files but exits 0, so test -z supplies the
+      # failure. Do not simplify this to a bare `gofmt -l`.
       - name: Check formatting
         run: test -z "$(gofmt -l ./cmd ./internal)"
 
-      # -race matters most for internal/ops: the hub, recorder and limiter are
-      # all touched concurrently by request handlers and the SSE stream. It
-      # needs cgo, so it does not run on a dev machine without a C compiler --
-      # this is the only place it is enforced.
       - name: Test
         run: go test ./... -race
 
-      # Last, because a lint failure is less interesting than a broken build or
-      # a failing test, and this step is the slowest.
       - name: Lint
         uses: golangci/golangci-lint-action@v8
         with:

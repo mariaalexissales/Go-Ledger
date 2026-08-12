@@ -18,8 +18,6 @@ function event(partial: Partial<SecurityEvent>): SecurityEvent {
 
 describe('computeStats', () => {
   it('returns zeroed totals for no events', () => {
-    // The dashboard reads totals.BLOCKED.toLocaleString() unconditionally, so
-    // both keys must exist even with nothing recorded.
     const stats = computeStats([])
     expect(stats.totals).toEqual({ ALLOWED: 0, BLOCKED: 0 })
     expect(stats.distinct_ips).toBe(0)
@@ -59,8 +57,6 @@ describe('computeStats', () => {
   })
 
   it('breaks ties on ip_address ascending, matching the SQL ORDER BY', () => {
-    // internal/ops/console.go orders by `total DESC, ip_address`. Without the
-    // second key the order would follow Map insertion and differ from the server.
     const stats = computeStats([
       event({ ip_address: '203.0.113.9' }),
       event({ ip_address: '192.0.2.1' }),
@@ -116,8 +112,6 @@ describe('computeStats', () => {
   })
 
   it('describes itself as a recorded run rather than a time window', () => {
-    // The live server reports the requested window; replay has no window, and
-    // the dashboard prints this string verbatim.
     expect(computeStats([]).window).toBe('recorded run')
   })
 })

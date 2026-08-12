@@ -32,9 +32,6 @@ func TestHubPublishReachesEverySubscriber(t *testing.T) {
 	}
 }
 
-// The reason Hub exists rather than a plain channel: a browser tab that stops
-// reading must not be able to stall the request path. Publish fills the buffer,
-// then drops.
 func TestHubPublishNeverBlocksOnAFullSubscriber(t *testing.T) {
 	hub := NewHub()
 	sub := hub.Subscribe()
@@ -60,7 +57,6 @@ func TestHubPublishNeverBlocksOnAFullSubscriber(t *testing.T) {
 		t.Errorf("Dropped() = %d, want %d", got, overshoot)
 	}
 
-	// The buffered events are still there to be read, oldest first.
 	if got := <-sub.Events(); got.ID != 0 {
 		t.Errorf("first buffered event ID = %d, want 0 (dropping must discard the newest, not the queue)", got.ID)
 	}
@@ -76,14 +72,10 @@ func TestHubCloseUnsubscribes(t *testing.T) {
 		t.Errorf("SubscriberCount() after Close = %d, want 0", got)
 	}
 
-	// A closed channel yields the zero value immediately rather than blocking,
-	// which is what lets the stream handler's range loop terminate.
 	if _, open := <-sub.Events(); open {
 		t.Error("Events() channel is still open after Close")
 	}
 
-	// Publishing to a hub with no subscribers must not panic on the closed
-	// channel, which is the bug a missing delete would cause.
 	hub.Publish(SecurityEvent{ID: 1})
 }
 
@@ -95,8 +87,6 @@ func TestHubCloseIsIdempotent(t *testing.T) {
 	sub.Close() // Must not panic by closing an already-closed channel.
 }
 
-// Run with -race. Publish takes only an RLock, so concurrent publishers and
-// subscribers racing on the map is exactly what needs proving safe.
 func TestHubConcurrentPublishAndSubscribe(t *testing.T) {
 	hub := NewHub()
 

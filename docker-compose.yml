@@ -16,8 +16,6 @@ services:
       interval: 5s
       timeout: 3s
       retries: 10
-    # Matches the app below. Without it a host reboot brings the API back up
-    # against a database that is not running.
     restart: unless-stopped
 
   app:

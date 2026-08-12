@@ -19,8 +19,7 @@ func (a *API) listAccounts(w http.ResponseWriter, r *http.Request) {
 	search := r.URL.Query().Get("q")
 
 	// COUNT(*) OVER() returns the unpaginated total alongside each row, which
-	// avoids a second round trip just to fill in the envelope. It lands in
-	// total, captured by the scan closure below.
+	// avoids a second round trip just to fill in the envelope.
 	total := 0
 
 	accounts, err := db.Collect(r.Context(), a.DB, `

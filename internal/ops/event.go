@@ -11,8 +11,6 @@ const (
 	FlagBlocked = "BLOCKED"
 )
 
-// SecurityEvent is the stored shape, scanned positionally. It never reaches the
-// wire -- EventDTO below is what clients see -- so it carries no struct tags.
 type SecurityEvent struct {
 	ID         int64
 	Timestamp  time.Time

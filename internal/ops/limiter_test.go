@@ -109,27 +109,14 @@ func TestRateLimiterSetPolicyClearsState(t *testing.T) {
 	}
 }
 
-// The sweeper goroutine used to have no stop path at all: the ticker was never
-// stopped and the loop ran forever, so a RateLimiter could never be collected
-// and every test in this file leaked one.
-//
-// Asserted through Close's own contract rather than by counting goroutines.
-// runtime.NumGoroutine() is an absolute number shared with every other test in
-// the package, so comparing it before and after is flaky by construction -- an
-// unrelated goroutine finishing mid-test moves it. Close blocking until the
-// sweeper has returned is both the stronger guarantee and the testable one.
 func TestRateLimiterCloseStopsTheSweeper(t *testing.T) {
 	rl := NewRateLimiter(1, 10*time.Millisecond, time.Minute)
 
-	// Let it tick at least once, so this is not just testing a goroutine that
-	// never got scheduled.
 	time.Sleep(30 * time.Millisecond)
 
 	done := make(chan struct{})
 	go func() {
 		rl.Close()
-		// Idempotent, and the second call must not panic on a closed channel or
-		// block forever waiting on an already-departed goroutine.
 		rl.Close()
 		close(done)
 	}()
@@ -140,7 +127,6 @@ func TestRateLimiterCloseStopsTheSweeper(t *testing.T) {
 		t.Fatal("Close did not return: the sweeper goroutine is still running")
 	}
 
-	// The sweeper has exited, so the ticker it owned is stopped too.
 	select {
 	case <-rl.stopped:
 	default:
@@ -148,7 +134,6 @@ func TestRateLimiterCloseStopsTheSweeper(t *testing.T) {
 	}
 }
 
-// Close must not deadlock when called from several goroutines at once.
 func TestRateLimiterCloseIsConcurrencySafe(t *testing.T) {
 	rl := NewRateLimiter(1, time.Minute, time.Minute)
 

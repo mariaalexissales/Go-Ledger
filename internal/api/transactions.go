@@ -16,24 +16,14 @@ import (
 	"go-ledger/internal/httpx"
 )
 
-// errAccountNotFound distinguishes "the referenced account does not exist" from
-// "the transaction does not exist".
 var errAccountNotFound = errors.New("account not found")
 
-// withTx runs fn inside a transaction, committing on success and rolling back
-// on any error. fn receives the context so it does not have to reach back for
-// the request's own.
 func (a *API) withTx(ctx context.Context, fn func(ctx context.Context, tx pgx.Tx) error) error {
 	tx, err := a.DB.Begin(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to begin transaction: %w", err)
 	}
 
-	// WithoutCancel because ctx is the request context: if the client
-	// disconnects mid-transaction it is already cancelled, and issuing the
-	// rollback on it would fail. pgx would still tear the connection down, so
-	// this is not a leak either way, but the rollback should be the thing that
-	// releases the connection rather than the failure that follows it.
 	defer tx.Rollback(context.WithoutCancel(ctx))
 
 	if err := fn(ctx, tx); err != nil {

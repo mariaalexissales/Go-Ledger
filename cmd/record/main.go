@@ -1,10 +1,6 @@
 // Command record captures real demo runs from a running go-ledger server and
 // writes them to web/public/replay as JSON fixtures.
 //
-// The fixtures are what the GitHub Pages console replays, so they are recorded
-// rather than simulated: there is no second implementation of the limiter to
-// drift out of step with the Go one.
-//
 // Usage (with the server already running):
 //
 //	go run ./cmd/record
@@ -29,9 +25,6 @@ import (
 	"go-ledger/internal/ops"
 )
 
-// Recorded in both modes so the console can show the same scenario succeeding
-// and failing. Taken from the ops constants rather than string literals, so
-// adding a third mode is a compile error here instead of a silent omission.
 var modes = []ops.ClientIPMode{ops.ModeTrustXFF, ops.ModeRemoteAddr}
 
 func main() {
@@ -52,14 +45,10 @@ type recorder struct {
 	client *http.Client
 }
 
-// opsConfig is the part of GET /ops/config the recorder reads. Deliberately not
-// every field: see recordedConfig for what is kept.
 type opsConfig struct {
 	ClientIPMode ops.ClientIPMode `json:"client_ip_mode"`
 	RateLimit    ops.Policy       `json:"rate_limit"`
-	// Mutable is false when DEMOS_ENABLED=false, in which case there is nothing
-	// to record.
-	Mutable bool `json:"mutable"`
+	Mutable      bool             `json:"mutable"`
 }
 
 func (r *recorder) run() error {
@@ -98,11 +87,6 @@ func (r *recorder) run() error {
 		return fmt.Errorf("no demo scenarios available")
 	}
 
-	// Before the runs, not after: in remote-addr mode every demo request is
-	// attributed to the loopback address, so a run leaves 127.0.0.1 blocked --
-	// and /api/accounts is the one thing the recorder touches that is behind the
-	// guard. Reading it afterwards returns 429. Scenarios only GET, so nothing is
-	// lost by going first.
 	ledger, err := r.snapshotLedger()
 	if err != nil {
 		return err
@@ -196,10 +180,6 @@ func (r *recorder) recordScenario(id string, mode ops.ClientIPMode) error {
 	return nil
 }
 
-// recordedConfig is the config as it lands in index.json, without the
-// per-process fields the replay transport fills in itself. Declaring the two
-// kept beats listing the six dropped: a new field on the server's response
-// cannot leak into a fixture. Mirrors the Omit<> in web/src/replay/fixtures.ts.
 type recordedConfig struct {
 	ClientIPMode ops.ClientIPMode `json:"client_ip_mode"`
 	RateLimit    ops.Policy       `json:"rate_limit"`
@@ -212,14 +192,10 @@ type index struct {
 	Config     recordedConfig     `json:"config"`
 	Demos      []demo.Meta        `json:"demos"`
 	// Seed data for the ledger pages, which have no backend in replay mode.
-	// Kept as raw JSON so it is passed through byte for byte: account balances
-	// are pgtype.Numeric on the server, and there is no reason to risk a
-	// round-trip through it changing how a decimal is written.
 	Accounts     []json.RawMessage `json:"accounts"`
 	Transactions []json.RawMessage `json:"transactions"`
 }
 
-// ledgerSnapshot is the seed data the replay build serves on the ledger pages.
 type ledgerSnapshot struct {
 	Accounts     []json.RawMessage
 	Transactions []json.RawMessage
@@ -274,11 +250,6 @@ func (r *recorder) writeIndex(config opsConfig, demos []demo.Meta, ledger ledger
 func (r *recorder) setMode(mode ops.ClientIPMode) error {
 	return r.put("/ops/config/client-ip-mode", map[string]string{"mode": string(mode)}, nil)
 }
-
-// The HTTP helpers below are deliberately not internal/demo's Client: that one
-// exists to generate scenario traffic, so it attaches synthetic identity
-// headers and spends a per-run request budget. Neither belongs in a recorder,
-// which speaks to /ops as an ordinary operator would.
 
 func (r *recorder) get(path string, query url.Values, dst any) error {
 	target := r.base + path
@@ -360,9 +331,6 @@ func (r *recorder) writeIfChanged(name string, v any) (bool, error) {
 }
 
 // meaningfullyEqual reports whether two encoded fixtures differ in anything
-// other than timing noise. Both sides are normalised through any, so key order
-// does not matter -- which is what lets the encoders change shape without
-// forcing a rewrite of every fixture.
 func meaningfullyEqual(a, b any) bool {
 	left, err := json.Marshal(withoutVolatile(a))
 	if err != nil {

@@ -32,12 +32,7 @@ func main() {
 	}
 }
 
-// run dispatches on the subcommand, if any. Every path returns an error rather
-// than calling log.Fatalf, so the deferred cleanup in each actually runs.
 func run(args []string) error {
-	// The healthcheck runs before configuration is even loaded: the container
-	// healthcheck invokes it, the distroless runtime image has no shell to curl
-	// with, and it must not depend on a valid DATABASE_URL to report liveness.
 	if len(args) > 0 && args[0] == "healthcheck" {
 		return runHealthcheck()
 	}
@@ -55,16 +50,11 @@ func run(args []string) error {
 		return fmt.Errorf("invalid configuration: %w", err)
 	}
 
-	// Validated up here, with the rest of the configuration, so a typo fails
-	// before the process touches the database.
 	ipMode, err := ops.ParseClientIPMode(cfg.ClientIPMode)
 	if err != nil {
 		return fmt.Errorf("invalid configuration: %w", err)
 	}
 
-	// Matched exactly, not searched for anywhere in the argument list. The
-	// previous slices.Contains meant `server not-reset-actually-seed` reseeded
-	// the database.
 	var command string
 	if len(args) > 0 {
 		command = args[0]
@@ -102,7 +92,6 @@ func run(args []string) error {
 		}
 	}
 
-	// Explicit CLI invocations are one-shot; SEED_ON_START is not.
 	if command == "reset" || command == "seed" {
 		return nil
 	}
@@ -185,32 +174,21 @@ func serve(cfg *config.Config, ipMode ops.ClientIPMode, pool *pgxpool.Pool) erro
 			SPA:     spaHandler,
 		}),
 
-		// http.Server defaults every timeout to zero, meaning none: a connection
-		// dribbling one header byte per minute is held open indefinitely. That is
-		// Slowloris, and it walks straight past a per-request rate limiter
-		// because it never completes a request to be counted.
 		ReadHeaderTimeout: 5 * time.Second,
 		ReadTimeout:       15 * time.Second,
 
-		// Safe for the open-ended SSE stream: every frame goes out through
-		// writeRaw in internal/ops/stream.go, which sets a per-connection write
-		// deadline, and that overrides the server-wide one.
+		// Safe for SSE: writeRaw in internal/ops/stream.go sets a per-connection
+		// write deadline, which overrides this.
 		WriteTimeout: 30 * time.Second,
 
-		// Between requests on a keep-alive connection only, so a stream that is
-		// mid-response is unaffected.
 		IdleTimeout: 60 * time.Second,
 
-		// 64 KiB against a 1 MiB default; X-Forwarded-For is attacker-controlled
-		// by design here.
 		MaxHeaderBytes: 1 << 16,
 	}
 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
-	// Buffered so the goroutine can report and exit even though the select
-	// below may already have been woken by a signal instead.
 	serveErr := make(chan error, 1)
 
 	go func() {
@@ -221,10 +199,6 @@ func serve(cfg *config.Config, ipMode ops.ClientIPMode, pool *pgxpool.Pool) erro
 		}
 	}()
 
-	// A signal and a failed listen leave by the same door, so a server that
-	// cannot bind still drains its queued events. Not log.Fatalf in the
-	// goroutine: os.Exit from a non-main goroutine skips every defer here and
-	// the drain below.
 	var listenErr error
 	select {
 	case <-ctx.Done():
@@ -249,9 +223,6 @@ func serve(cfg *config.Config, ipMode ops.ClientIPMode, pool *pgxpool.Pool) erro
 		log.Println("Timed out flushing security events")
 	}
 
-	// Reported only now, so the process still exits non-zero for a supervisor or
-	// a compose restart policy, but does so after the drain rather than instead
-	// of it.
 	return listenErr
 }
 

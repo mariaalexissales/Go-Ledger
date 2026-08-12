@@ -2,17 +2,8 @@ import { describe, expect, it } from 'vitest'
 import { IP_RAMP_SIZE } from '@/theme'
 import { formatDuration, formatMoney, ipColor } from './format'
 
-/**
- * formatDateTime and formatTime are deliberately not asserted against literal
- * strings: both use Intl with the runtime's locale and time zone, so any such
- * expectation would encode the machine that ran it. Their guard clauses are
- * what matter, and those are covered below.
- */
-
 describe('formatMoney', () => {
   it('renders an em dash for absent values rather than $0.00 or NaN', () => {
-    // A null balance means "no rows yet", which is not the same as zero. The
-    // Go side sends null because balance comes from pgtype.Numeric.
     expect(formatMoney(null)).toBe('—')
     expect(formatMoney(undefined)).toBe('—')
     expect(formatMoney(NaN)).toBe('—')
@@ -50,8 +41,6 @@ describe('formatDuration', () => {
 
 describe('ipColor', () => {
   it('is stable for the same address', () => {
-    // The whole point: one IP keeps one colour across the feed and the chart,
-    // so a distributed scenario visually fans out.
     expect(ipColor('192.0.2.1')).toBe(ipColor('192.0.2.1'))
   })
 

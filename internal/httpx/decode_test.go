@@ -39,8 +39,6 @@ func TestDecodeJSON(t *testing.T) {
 			wantError:  "invalid request body",
 		},
 		{
-			// The distinction matters: reporting an oversized body as malformed
-			// sends the client looking for a syntax error it will never find.
 			name:       "body over the cap",
 			body:       `{"name":"` + strings.Repeat("x", maxBodyBytes) + `"}`,
 			wantStatus: http.StatusRequestEntityTooLarge,
@@ -80,13 +78,11 @@ func TestDecodeJSON(t *testing.T) {
 	}
 }
 
-// A body at exactly the cap is allowed; the reader only objects past it.
 func TestDecodeJSONAtCap(t *testing.T) {
 	var dst struct {
 		Name string `json:"name"`
 	}
 
-	// `{"name":"..."}` is 12 bytes of envelope around the padding.
 	body := `{"name":"` + strings.Repeat("x", maxBodyBytes-11) + `"}`
 	if len(body) != maxBodyBytes {
 		t.Fatalf("test setup: body is %d bytes, want %d", len(body), maxBodyBytes)

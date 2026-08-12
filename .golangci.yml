@@ -1,8 +1,5 @@
 version: "2"
 
-# A deliberately small set. The point is to catch the things review misses --
-# discarded errors, dead code, shadowed writes -- not to enforce a house style,
-# which gofmt already does.
 linters:
   default: none
   enable:
@@ -15,30 +12,19 @@ linters:
 
   settings:
     errcheck:
-      # Deferred cleanup where the error genuinely carries no information.
-      # Anything that *writes* on Close (a gzip or buffered writer, say) reports
-      # flush failures there and must still be checked explicitly -- these
-      # exclusions cover the read and teardown side only.
+      # Deferred cleanup where the error carries no information. A write-side
+      # Close reports flush failures and must still be checked.
       exclude-functions:
-        # Every Close in this codebase is on something being read: an HTTP
-        # response body or the SPA's index.html. Nothing is buffered for write.
-        # Both spellings are needed -- errcheck matches the declared type, and
-        # spa.go holds an fs.File rather than a bare io.Closer.
+        # Both spellings: errcheck matches the declared type, and spa.go holds
+        # an fs.File rather than a bare io.Closer.
         - (io.Closer).Close
         - (io/fs.File).Close
-        # Rollback after a successful Commit returns ErrTxClosed by design,
-        # which is exactly why the deferred form is the idiomatic pgx pattern.
         - (github.com/jackc/pgx/v5.Tx).Rollback
-        # Runs once at startup, immediately before the process either serves or
-        # exits; a failure to release the migration lock changes nothing.
         - (*github.com/golang-migrate/migrate/v4.Migrate).Close
 
     staticcheck:
       checks:
         - all
-        # ST1000 wants a package comment on every package. internal/db and
-        # internal/db/migrations are one-purpose packages whose names say
-        # everything a comment would.
         - -ST1000
 
 formatters:
@@ -46,7 +32,5 @@ formatters:
     - gofmt
 
 issues:
-  # Every finding, not the default three per linter: a cap means a clean run
-  # cannot be trusted to mean there is nothing left.
   max-issues-per-linter: 0
   max-same-issues: 0

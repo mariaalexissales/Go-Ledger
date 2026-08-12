@@ -32,9 +32,6 @@ describe('rateLimitStore', () => {
   })
 
   it('extends a block but never shortens one', () => {
-    // The server re-blocks on every request received during a block, so a
-    // shorter Retry-After arriving second must not let the UI re-enable
-    // mutations early.
     rateLimitStore.trip(60)
     const until = rateLimitStore.getSnapshot().until
 
@@ -50,7 +47,6 @@ describe('rateLimitStore', () => {
     vi.advanceTimersByTime(5_000)
 
     rateLimitStore.trip(60)
-    // The first timer would have fired here.
     vi.advanceTimersByTime(5_000)
     expect(rateLimitStore.getSnapshot().until).not.toBeNull()
 
@@ -74,8 +70,6 @@ describe('rateLimitStore', () => {
   })
 
   it('returns a stable snapshot reference between changes', () => {
-    // useSyncExternalStore re-renders whenever the snapshot identity changes, so
-    // repeated reads without a change must return the same object.
     const first = rateLimitStore.getSnapshot()
     expect(rateLimitStore.getSnapshot()).toBe(first)
 

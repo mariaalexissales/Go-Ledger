@@ -89,8 +89,6 @@ func serveIndex(w http.ResponseWriter, fsys fs.FS) {
 	w.Header().Set("Cache-Control", "no-cache")
 	w.WriteHeader(http.StatusOK)
 
-	// Past WriteHeader there is no way to report a failure to the client, and a
-	// half-sent index.html is usually just a browser that navigated away.
 	if _, err := io.Copy(w, file); err != nil {
 		log.Printf("spa: serving index.html failed: %v", err)
 	}

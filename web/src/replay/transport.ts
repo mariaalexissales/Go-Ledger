@@ -9,15 +9,6 @@ import { EVENTS_PAGE, LEDGER_PAGE, list, paginate } from './paging'
 import { computeStats } from './stats'
 
 /**
- * The replay transport answers the subset of the Go router's route table that
- * the console actually calls, returning the same JSON shapes. Everything above
- * it stays identical in both builds: the feature api modules, the query hooks
- * and the components.
- *
- * Deliberately a subset, not a mirror. An endpoint the UI never reaches for is
- * a second implementation with nothing exercising it, so it drifts from the Go
- * handler unnoticed. If you add a call in a feature api module, add the route
- * here too -- nothing enforces the pairing.
  */
 
 let mode: ClientIPMode | null = null

@@ -30,13 +30,8 @@ export interface Column<T> {
   width?: number
   align?: 'left' | 'right' | 'center'
   /**
-   * Formats `row[key]`. Declared as a method rather than a property so a call
-   * site can narrow the parameter -- `format(value: string)` is assignable
-   * because method parameters stay bivariant under strictFunctionTypes, which
-   * property-style function types do not.
    */
   format?(value: unknown, row: T): ReactNode
-  /** Full control over the cell. Wins over `format`. */
   render?: (row: T) => ReactNode
 }
 

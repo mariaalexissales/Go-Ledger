@@ -33,8 +33,6 @@ func TestParsePageParams(t *testing.T) {
 			wantLimit: maxLimit,
 		},
 		{
-			// A list endpoint returning 400 for a stray query param is more
-			// annoying than useful, so bad input falls back to the default.
 			name:      "a non-numeric limit falls back to the default",
 			query:     "?limit=abc",
 			wantLimit: defaultLimit,
@@ -96,8 +94,6 @@ func TestOptionalIntParam(t *testing.T) {
 		want  *int
 	}{
 		{
-			// nil is what makes ($1::int IS NULL OR col = $1::int) mean
-			// "no filter", so an absent param must not become 0.
 			name:  "absent yields nil",
 			query: "",
 		},

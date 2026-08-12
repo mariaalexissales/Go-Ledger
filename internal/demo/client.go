@@ -95,9 +95,6 @@ func (c *Client) Sleep(ctx context.Context, d time.Duration) error {
 	}
 }
 
-// Get is the only verb scenarios need: they demonstrate read-request volume
-// against the guard, and writing rows would make a run leave traces in the
-// ledger that the next run inherits.
 func (c *Client) Get(ctx context.Context, id Identity, path string) (Step, error) {
 	return c.do(ctx, id, http.MethodGet, path)
 }
@@ -138,10 +135,6 @@ func (c *Client) do(ctx context.Context, id Identity, method, path string) (Step
 	}
 	defer resp.Body.Close()
 
-	// Drained so the connection can be reused for the next request in the
-	// scenario -- a scenario that opens a new socket per request would measure
-	// the dialer as much as the limiter. The body itself is not wanted, and a
-	// read failure here says nothing the status code has not already said.
 	_, _ = io.Copy(io.Discard, io.LimitReader(resp.Body, 4096))
 
 	step.Status = resp.StatusCode

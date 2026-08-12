@@ -16,20 +16,11 @@ type RateLimiter struct {
 	blockPeriod time.Duration
 	blockedIPs  map[string]time.Time
 
-	// done tells the sweeper to stop; stopped is closed by the sweeper on its way
-	// out, so Close can report that it really has.
 	done      chan struct{}
 	stopped   chan struct{}
 	closeOnce sync.Once
 }
 
-// NewRateLimiter initializes a RateLimiter and spawns a background goroutine to
-// periodically sweep and evict expired request records from memory. Call Close
-// when the limiter is no longer needed, or that goroutine and its ticker live
-// for the rest of the process.
-//   - limit: Maximum allowed requests within the time window.
-//   - window: Duration of the sliding tracking window.
-//   - blockPeriod: How long an offending IP remains blocked.
 func NewRateLimiter(limit int, window time.Duration, blockPeriod time.Duration) *RateLimiter {
 	rl := &RateLimiter{
 		requests:    make(map[string][]time.Time),
@@ -44,8 +35,6 @@ func NewRateLimiter(limit int, window time.Duration, blockPeriod time.Duration) 
 	return rl
 }
 
-// Close stops the sweeper and waits for it to exit, so nothing is left running
-// once Close returns. Idempotent and safe to call concurrently.
 func (rl *RateLimiter) Close() {
 	rl.closeOnce.Do(func() { close(rl.done) })
 	<-rl.stopped
@@ -119,8 +108,6 @@ func (rl *RateLimiter) Allow(ip string) Decision {
 type Policy struct {
 	Limit int `json:"limit"`
 
-	// The durations travel as strings, since a time.Duration marshals as a
-	// nanosecond count that no client wants to read.
 	WindowText      string `json:"window"`
 	BlockPeriodText string `json:"block_period"`
 }
@@ -175,9 +162,6 @@ func (rl *RateLimiter) BlockedIPs() map[string]time.Time {
 	return out
 }
 
-// cleanup sweeps expired request records until the limiter is closed. The
-// initial interval is passed in rather than read from rl.window so the goroutine
-// never touches shared state unguarded.
 func (rl *RateLimiter) cleanup(interval time.Duration) {
 	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
@@ -204,9 +188,6 @@ func (rl *RateLimiter) cleanup(interval time.Duration) {
 					delete(rl.requests, ip)
 				}
 			}
-			// Follow the live window, so retuning the policy in the console
-			// retunes the sweep cadence with it instead of leaving it at
-			// whatever was configured at startup.
 			next := rl.window * 2
 			rl.mu.Unlock()
 

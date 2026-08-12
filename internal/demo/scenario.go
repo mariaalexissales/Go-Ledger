@@ -1,9 +1,5 @@
 // Package demo runs scripted traffic patterns against the ledger API so the
 // security guard can be observed reacting to them in real time.
-//
-// This file defines what a scenario is. The scenarios themselves are in
-// scenarios.go: add an entry to the slice there and it appears in the API
-// listing and in the UI automatically.
 package demo
 
 import (
@@ -48,8 +44,6 @@ type Scenario struct {
 	Run  func(ctx context.Context, c *Client) error
 }
 
-// All returns scenario metadata in declaration order, which is the order to
-// read them in: baseline first, then each way of defeating the guard.
 func All() []Meta {
 	metas := make([]Meta, 0, len(scenarios))
 	for _, s := range scenarios {

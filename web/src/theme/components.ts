@@ -3,11 +3,6 @@ import type { Components, Theme } from '@mui/material/styles'
 /**
  * Component overrides. Styling belongs here rather than in `sx` props on route
  * files, which should only reach for semantic colors.
- *
- * `shape.borderRadius` is 0 (see ./index.ts) and almost every component reads
- * it, so squaring things off by hand is unnecessary. Chip is the one exception:
- * it hardcodes `32 / 2`. `typography.fontFamily` is likewise the mono face
- * already, so per-component fontFamily is redundant too.
  */
 
 /**
@@ -118,9 +113,6 @@ export const components: Components<Omit<Theme, 'components'>> = {
 
   MuiAppBar: {
     styleOverrides: {
-      // Load-bearing. `color="default"` resolves to `palette.AppBar.defaultBg`,
-      // which MUI sets to grey[100] in light mode -- the one gray surface this
-      // palette does not want. Dark mode already lands on background.paper.
       root: ({ theme }) => ({
         backgroundColor: v(theme).palette.background.paper,
       }),
@@ -157,8 +149,6 @@ export const components: Components<Omit<Theme, 'components'>> = {
   MuiChip: {
     styleOverrides: {
       root: {
-        // Chip is the one component that hardcodes its radius (32 / 2) instead
-        // of reading shape.borderRadius.
         borderRadius: 0,
         letterSpacing: '.06em',
       },
@@ -237,7 +227,6 @@ export const components: Components<Omit<Theme, 'components'>> = {
   MuiTableRow: {
     styleOverrides: {
       root: ({ theme }) => ({
-        // Hover lifts in both schemes rather than pressing down. See the note on
         // `hoverRow` in tokens.ts for why pressing down fails in light mode.
         '&:hover': { backgroundColor: v(theme).palette.estral.hoverRow },
       }),

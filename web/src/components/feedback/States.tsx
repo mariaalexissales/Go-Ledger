@@ -58,14 +58,6 @@ export function ErrorState({ error, onRetry }: { error: unknown; onRetry?: () =>
   )
 }
 
-/**
- * Router-level fallbacks.
- *
- * Without these a throw during render blanks the page, and an unknown path
- * renders the shell around an empty outlet. The second one matters more than it
- * looks on GitHub Pages: 404.html is a copy of index.html, so every mistyped
- * deep link arrives here rather than at a server error page.
- */
 export function RouteErrorFallback({ error, reset }: { error: unknown; reset?: () => void }) {
   return (
     <Box sx={{ p: 3 }}>
