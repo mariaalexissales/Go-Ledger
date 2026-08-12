@@ -1,10 +1,12 @@
 import { ApiError } from '@/lib/http/errors'
-import type { ListResponse, QueryParams } from '@/lib/http/client'
-import type { ClientIPMode, OpsConfig, SecurityEvent, SecurityStats } from '@/features/security/security.types'
+import type { QueryParams } from '@/lib/http/client'
+import type { ClientIPMode, OpsConfig, SecurityEvent } from '@/features/security/security.types'
 import type { DemoResult } from '@/features/demos/demos.types'
 import { loadFixture, loadIndex } from './fixtures'
 import { replayBus } from './bus'
 import { replayLedger } from './ledger'
+import { EVENTS_PAGE, LEDGER_PAGE, list, paginate } from './paging'
+import { computeStats } from './stats'
 
 /**
  * The replay transport answers the subset of the Go router's route table that
@@ -37,7 +39,7 @@ async function route(method: string, path: string, query: Params, body: unknown)
 
   if (path === '/api/accounts' && method === 'GET') {
     const rows = await replayLedger.listAccounts(str(query.q))
-    return paginate(rows, query, 25, 100)
+    return paginate(rows, query, LEDGER_PAGE.fallback, LEDGER_PAGE.max)
   }
 
   if (path === '/api/accounts' && method === 'POST') {
@@ -49,7 +51,7 @@ async function route(method: string, path: string, query: Params, body: unknown)
   const accountTransactions = /^\/api\/accounts\/(\d+)\/transactions$/.exec(path)
   if (accountTransactions && method === 'GET') {
     const rows = await replayLedger.listTransactions(Number(accountTransactions[1]))
-    return paginate(rows, query, 25, 100)
+    return paginate(rows, query, LEDGER_PAGE.fallback, LEDGER_PAGE.max)
   }
 
   const account = /^\/api\/accounts\/(\d+)$/.exec(path)
@@ -71,7 +73,7 @@ async function route(method: string, path: string, query: Params, body: unknown)
   if (path === '/api/transactions' && method === 'GET') {
     const accountId = query.account_id === undefined ? undefined : Number(query.account_id)
     const rows = await replayLedger.listTransactions(accountId)
-    return paginate(rows, query, 25, 100)
+    return paginate(rows, query, LEDGER_PAGE.fallback, LEDGER_PAGE.max)
   }
 
   if (path === '/api/transactions' && method === 'POST') {
@@ -126,7 +128,7 @@ async function route(method: string, path: string, query: Params, body: unknown)
     }
 
     // Newest first, matching the server's ORDER BY.
-    return paginate([...rows].reverse(), query, 50, 500)
+    return paginate([...rows].reverse(), query, EVENTS_PAGE.fallback, EVENTS_PAGE.max)
   }
 
   if (path === '/ops/events/reset' && method === 'POST') {
@@ -134,7 +136,7 @@ async function route(method: string, path: string, query: Params, body: unknown)
     return undefined
   }
 
-  if (path === '/ops/stats' && method === 'GET') return computeStats()
+  if (path === '/ops/stats' && method === 'GET') return computeStats(replayedEvents)
 
   if (path === '/ops/demos' && method === 'GET') {
     const index = await loadIndex()
@@ -200,68 +202,6 @@ async function currentConfig(): Promise<OpsConfig> {
     dropped_events: 0,
     failed_events: 0,
   }
-}
-
-/** Derived from what has replayed so far, so the tiles move during a run. */
-function computeStats(): SecurityStats {
-  const totals = { ALLOWED: 0, BLOCKED: 0 }
-  const perIp = new Map<string, { total: number; blocked: number }>()
-  const perBucket = new Map<string, { allowed: number; blocked: number }>()
-
-  for (const event of replayedEvents) {
-    if (event.blocked) totals.BLOCKED++
-    else totals.ALLOWED++
-
-    const ip = perIp.get(event.ip_address) ?? { total: 0, blocked: 0 }
-    ip.total++
-    if (event.blocked) ip.blocked++
-    perIp.set(event.ip_address, ip)
-
-    // Bucket by the recorded timestamp so the chart reflects the real run shape.
-    const minute = new Date(event.timestamp)
-    minute.setSeconds(0, 0)
-    const key = minute.toISOString()
-
-    const bucket = perBucket.get(key) ?? { allowed: 0, blocked: 0 }
-    if (event.blocked) bucket.blocked++
-    else bucket.allowed++
-    perBucket.set(key, bucket)
-  }
-
-  const top_ips = [...perIp.entries()]
-    .map(([ip_address, counts]) => ({ ip_address, ...counts }))
-    .sort((a, b) => b.total - a.total || a.ip_address.localeCompare(b.ip_address))
-    .slice(0, 10)
-
-  const buckets = [...perBucket.entries()]
-    .map(([bucket, counts]) => ({ bucket, ...counts }))
-    .sort((a, b) => a.bucket.localeCompare(b.bucket))
-
-  return {
-    window: 'recorded run',
-    totals,
-    distinct_ips: perIp.size,
-    top_ips,
-    buckets,
-    blocked_now: [],
-  }
-}
-
-function paginate<T>(rows: T[], query: Params, fallback: number, max: number): ListResponse<T> {
-  const limit = clampInt(query.limit, fallback, max)
-  const offset = Math.max(0, Number(query.offset) || 0)
-
-  return list(rows.slice(offset, offset + limit), rows.length, limit, offset)
-}
-
-function list<T>(data: T[], total: number, limit: number, offset: number): ListResponse<T> {
-  return { data, total, limit, offset }
-}
-
-function clampInt(value: unknown, fallback: number, max: number): number {
-  const parsed = Number(value)
-  if (!Number.isFinite(parsed) || parsed < 1) return fallback
-  return Math.min(Math.trunc(parsed), max)
 }
 
 function str(value: unknown): string {
