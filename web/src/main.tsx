@@ -16,6 +16,7 @@ import CssBaseline from '@mui/material/CssBaseline'
 import { routeTree } from './routeTree.gen'
 import { theme } from './theme'
 import { ApiError } from '@/lib/http/errors'
+import { RouteErrorFallback, RouteNotFound } from '@/components/feedback/States'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -34,9 +35,14 @@ const queryClient = new QueryClient({
 const router = createRouter({
   routeTree,
   defaultPreload: 'intent',
-  // On GitHub Pages the app is served from /go-ledger/, so the router has to
-  // strip that prefix before matching. BASE_URL is '/' everywhere else.
+  // On GitHub Pages the app is served from a repository subpath, so the router
+  // has to strip that prefix before matching. Set by VITE_BASE in
+  // web/.env.pages; BASE_URL is '/' everywhere else.
   basepath: import.meta.env.BASE_URL,
+  // Applied to every route that does not define its own. Without them a render
+  // throw shows a blank page and an unknown path shows an empty outlet.
+  defaultErrorComponent: RouteErrorFallback,
+  defaultNotFoundComponent: RouteNotFound,
 })
 
 declare module '@tanstack/react-router' {

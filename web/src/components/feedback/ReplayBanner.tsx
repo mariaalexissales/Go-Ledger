@@ -1,7 +1,7 @@
 import { Alert, Box, Link as MuiLink, Typography } from '@mui/material'
 import { REPLAY } from '@/replay/mode'
 
-const REPO_URL = 'https://github.com/mariaalexissales/go-ledger'
+const REPO_URL = 'https://github.com/mariaalexissales/Go-Ledger'
 
 export function ReplayBanner() {
   if (!REPLAY) return null

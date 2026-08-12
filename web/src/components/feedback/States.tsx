@@ -1,4 +1,5 @@
 import { Alert, AlertTitle, Box, Button, Skeleton, Stack, Typography } from '@mui/material'
+import { Link } from '@tanstack/react-router'
 import type { ReactNode } from 'react'
 import { ApiError } from '@/lib/http/errors'
 
@@ -54,5 +55,35 @@ export function ErrorState({ error, onRetry }: { error: unknown; onRetry?: () =>
       <AlertTitle>Request failed{status}</AlertTitle>
       {message}
     </Alert>
+  )
+}
+
+/**
+ * Router-level fallbacks.
+ *
+ * Without these a throw during render blanks the page, and an unknown path
+ * renders the shell around an empty outlet. The second one matters more than it
+ * looks on GitHub Pages: 404.html is a copy of index.html, so every mistyped
+ * deep link arrives here rather than at a server error page.
+ */
+export function RouteErrorFallback({ error, reset }: { error: unknown; reset?: () => void }) {
+  return (
+    <Box sx={{ p: 3 }}>
+      <ErrorState error={error} onRetry={reset} />
+    </Box>
+  )
+}
+
+export function RouteNotFound() {
+  return (
+    <EmptyState
+      title="Not found"
+      description="That path does not match any page in the console."
+      action={
+        <Button component={Link} to="/" variant="contained" size="small">
+          Back to dashboard
+        </Button>
+      }
+    />
   )
 }
