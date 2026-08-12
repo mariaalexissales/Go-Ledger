@@ -163,7 +163,7 @@ ranges, so your own browser is never rate-limited by a run.
 | -------------- | ------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
 | `baseline`     | 4 clients, 3 requests each, at a human pace             | What a healthy log looks like. Read the rest against it.                                          |
 | `burst`        | One IP, `limit × 2 + 5` requests back to back           | The case the limiter is built for: refused after the limit, with a `Retry-After` countdown.       |
-| `low-and-slow` | 20 clients, each staying one request under the limit    | **More total traffic than `burst`, and zero blocks.** Per-IP limiting cannot see distributed load. |
+| `low-and-slow` | 20 clients, 6 requests each — 120 in total, none near the limit | **More total traffic than `burst`, and zero blocks.** Per-IP limiting cannot see distributed load. |
 | `xff-spoof`    | One machine, a new forged `X-Forwarded-For` per request | **Zero blocks.** The guard believes the header, so the attacker gets a fresh identity every time.  |
 | `enumeration`  | Sequential `GET /api/accounts/{1..N}` from one IP       | Volume gets blocked, but the shape (ordered IDs, a trail of 404s) is what a log is for.            |
 
@@ -386,10 +386,15 @@ web/                 React console
   public/replay/     the recordings themselves (committed)
 ```
 
-Replay mode hooks in at exactly two places, which is the whole reason it is cheap: the
+Replay mode has two _transport_ seams, which is the whole reason it is cheap: the
 `request()` chokepoint in `src/lib/http/client.ts`, and the `EventSource` in
-`src/features/security/useEventStream.tsx`. Nothing above those layers knows which build
-it is running in.
+`src/features/security/useEventStream.tsx`. No feature module, query hook or table knows
+which build it is running in.
+
+The flag is read in three more places, all of them wording rather than behaviour:
+`ReplayBanner`, plus a handful of copy branches in `routes/demos.tsx` and
+`routes/__root.tsx` that say "recording" instead of "live". Those are deliberate — a
+mode-copy indirection would make the routes harder to read than the ternaries do.
 
 The frontend layering is deliberate and worth keeping: components import
 `*.queries.ts`, never `*.api.ts`. The API modules are pure transport with no React in
@@ -402,7 +407,8 @@ place instead of scattered through components.
 npm run build
 ```
 
-Produces `bin/server` with the console embedded. `//go:embed` fails at compile time
+Produces `bin/server` — `bin/server.exe` on Windows — with the console embedded.
+`//go:embed` fails at compile time
 when `dist/` is missing, so the embed lives behind an `embed_spa` build tag. That way
 `go build ./...` and `go test ./...` still work on a fresh clone with no Node
 installed.
