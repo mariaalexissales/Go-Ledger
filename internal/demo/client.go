@@ -137,7 +137,12 @@ func (c *Client) do(ctx context.Context, id Identity, method, path string) (Step
 		return c.record(step, err)
 	}
 	defer resp.Body.Close()
-	io.Copy(io.Discard, io.LimitReader(resp.Body, 4096))
+
+	// Drained so the connection can be reused for the next request in the
+	// scenario -- a scenario that opens a new socket per request would measure
+	// the dialer as much as the limiter. The body itself is not wanted, and a
+	// read failure here says nothing the status code has not already said.
+	_, _ = io.Copy(io.Discard, io.LimitReader(resp.Body, 4096))
 
 	step.Status = resp.StatusCode
 	step.Blocked = resp.StatusCode == http.StatusTooManyRequests

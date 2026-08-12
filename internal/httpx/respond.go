@@ -18,7 +18,14 @@ type errorResponse struct {
 func WriteJSON(w http.ResponseWriter, status int, v any) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
-	json.NewEncoder(w).Encode(v)
+
+	// The status line is already sent, so a failure here cannot be turned into
+	// an error response -- the client will see a truncated body either way.
+	// Logging it is all that is left, and it is worth doing: silently truncated
+	// JSON is otherwise indistinguishable from a client-side parse bug.
+	if err := json.NewEncoder(w).Encode(v); err != nil {
+		log.Printf("httpx: encoding a %d response body failed: %v", status, err)
+	}
 }
 
 func WriteError(w http.ResponseWriter, status int, msg string) {

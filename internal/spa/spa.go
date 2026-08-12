@@ -10,6 +10,7 @@ package spa
 import (
 	"io"
 	"io/fs"
+	"log"
 	"net/http"
 	"os"
 	"path"
@@ -87,7 +88,12 @@ func serveIndex(w http.ResponseWriter, fsys fs.FS) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.Header().Set("Cache-Control", "no-cache")
 	w.WriteHeader(http.StatusOK)
-	io.Copy(w, file)
+
+	// Past WriteHeader there is no way to report a failure to the client, and a
+	// half-sent index.html is usually just a browser that navigated away.
+	if _, err := io.Copy(w, file); err != nil {
+		log.Printf("spa: serving index.html failed: %v", err)
+	}
 }
 
 // PlaceholderHandler stands in when no bundle is available, so hitting the root
@@ -109,6 +115,6 @@ func PlaceholderHandler() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		w.WriteHeader(http.StatusOK)
-		io.WriteString(w, page)
+		_, _ = io.WriteString(w, page)
 	})
 }

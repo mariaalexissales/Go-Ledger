@@ -42,9 +42,18 @@ jobs:
         run: test -z "$(gofmt -l ./cmd ./internal)"
 
       # -race matters most for internal/ops: the hub, recorder and limiter are
-      # all touched concurrently by request handlers and the SSE stream.
+      # all touched concurrently by request handlers and the SSE stream. It
+      # needs cgo, so it does not run on a dev machine without a C compiler --
+      # this is the only place it is enforced.
       - name: Test
         run: go test ./... -race
+
+      # Last, because a lint failure is less interesting than a broken build or
+      # a failing test, and this step is the slowest.
+      - name: Lint
+        uses: golangci/golangci-lint-action@v8
+        with:
+          version: v2.12.2
 
   web:
     runs-on: ubuntu-latest

@@ -97,8 +97,18 @@ its own.
 Copy `.env.example` to `.env` first if you want to change anything. A missing `.env`
 is not fatal, and real environment variables always win.
 
-Other scripts: `npm run seed`, `npm run reset`, `npm run build`, `npm run lint`,
-`npm run typecheck`, `npm test`.
+Other scripts: `npm run seed`, `npm run reset`, `npm run build`, `npm run fmt`,
+`npm run typecheck`, `npm test`, `npm run test:race`, `npm run db:down`, `npm run down`.
+
+`npm run lint` needs [golangci-lint](https://golangci-lint.run) on your PATH:
+
+```bash
+go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@latest
+```
+
+CI runs the same config, plus `go test ./... -race`. The race detector needs cgo,
+so it will not run locally without a C compiler — that is the one check only CI
+performs.
 
 ---
 
