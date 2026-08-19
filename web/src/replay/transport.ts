@@ -8,9 +8,9 @@ import { replayLedger } from './ledger'
 import { EVENTS_PAGE, LEDGER_PAGE, list, paginate } from './paging'
 import { computeStats } from './stats'
 
-/**
- */
-
+// Module state, not a store: replay is single-tab, single-run. `mode` starts
+// null and is filled from the index on first read, so a fixture load is not
+// needed just to render the page.
 let mode: ClientIPMode | null = null
 let replayedEvents: SecurityEvent[] = []
 

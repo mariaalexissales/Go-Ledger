@@ -56,8 +56,8 @@ export interface EstralRamp {
   blockedRow: string
 
   /**
-   *
-   * #DDD5EE drops readout text to 4.09:1 and gold to 3.79:1. There is no room
+   * Row hover tint. Not a darkened paper: pressing the light-mode surface down
+   * to #DDD5EE drops readout text to 4.09:1 and gold to 3.79:1. There is no room
    * to nudge it either: readout needs a background luminance of 0.766 and the
    * paper is already at 0.796. Hover lifts in both modes instead, toward the
    * raised tone in dark and toward the page ground in light.
@@ -124,7 +124,6 @@ export const ESTRAL_DARK: EstralRamp = {
 
 /**
  * Light mode.
- *
  *
  * `dim` has no authored light value. It is derived by lightening `ghost`
  * toward the paper until it reads as inactive.

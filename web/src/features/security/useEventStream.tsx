@@ -35,7 +35,7 @@ const EventStreamContext = createContext<EventStreamValue | null>(null)
  * The browser sends Last-Event-ID automatically on reconnect and the server
  * replays the gap, so an HMR reload or a sleeping laptop does not silently lose
  * events. Stats queries are invalidated on a debounce rather than per event,
- * a burst scenario delivers hundreds of events in a second.
+ * because a burst scenario delivers hundreds of events in a second.
  */
 export function EventStreamProvider({ children }: { children: ReactNode }) {
   const queryClient = useQueryClient()
