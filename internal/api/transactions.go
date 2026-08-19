@@ -11,6 +11,7 @@ import (
 	"github.com/jackc/pgerrcode"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
+	"github.com/jackc/pgx/v5/pgtype"
 
 	"go-ledger/internal/db"
 	"go-ledger/internal/httpx"
@@ -35,6 +36,32 @@ func (a *API) withTx(ctx context.Context, fn func(ctx context.Context, tx pgx.Tx
 	}
 
 	return nil
+}
+
+// validateCreateTransaction rejects bodies the database would reject anyway,
+// but with a 400 instead of a 500. An absent or null amount leaves the
+// pgtype.Numeric zero-valued, which pgx encodes as NULL against a NOT NULL
+// column, and that surfaces as an opaque server error rather than a message
+// the caller can act on.
+func validateCreateTransaction(req CreateTransactionRequest) (string, bool) {
+	switch {
+	case req.AccountID < 1:
+		return "account_id must be a positive integer", false
+	case !req.Amount.Valid:
+		return "amount is required", false
+	case req.Amount.NaN:
+		return "amount must be a number", false
+	case req.Amount.InfinityModifier != pgtype.Finite:
+		return "amount must be finite", false
+	// Not a database constraint: NUMERIC(15,2) accepts zero happily. This is
+	// here so the API agrees with the console's own form, which already refuses
+	// it (see CreateTransactionDialog). Drop this case if a zero-amount
+	// transaction ever becomes meaningful.
+	case req.Amount.Int != nil && req.Amount.Int.Sign() == 0:
+		return "amount cannot be zero", false
+	}
+
+	return "", true
 }
 
 // GET: List transactions /transactions?limit=&offset=&account_id=
@@ -84,6 +111,11 @@ func (a *API) writeTransactionPage(w http.ResponseWriter, r *http.Request, accou
 func (a *API) createTransaction(w http.ResponseWriter, r *http.Request) {
 	var req CreateTransactionRequest
 	if !httpx.DecodeJSON(w, r, &req) {
+		return
+	}
+
+	if msg, ok := validateCreateTransaction(req); !ok {
+		httpx.WriteError(w, http.StatusBadRequest, msg)
 		return
 	}
 
