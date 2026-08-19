@@ -77,7 +77,7 @@ func (a *API) writeTransactionPage(w http.ResponseWriter, r *http.Request, accou
 		return
 	}
 
-	writeList(w, transactions, total, page)
+	httpx.WriteListPage(w, transactions, total, page)
 }
 
 // POST /transactions.
