@@ -31,7 +31,7 @@ interface ReplayFixture {
   events: SecurityEvent[]
 }
 
-// BASE_URL is '/' locally and '/go-ledger/' on Pages, so fixtures resolve
+// BASE_URL is '/' locally and '/Go-Ledger/' on Pages, so fixtures resolve
 // correctly under a project-page path without any extra configuration.
 const ROOT = `${import.meta.env.BASE_URL}replay/`
 

@@ -80,8 +80,9 @@ background a process — the root `package.json` has no dependencies and needs n
 Copy `.env.example` to `.env` if you want to change anything. A missing `.env` is not
 fatal, and real environment variables always win.
 
-Other scripts: `seed`, `reset`, `build`, `fmt`, `typecheck`, `test`, `test:race`,
-`db:down`, `down`. `npm run lint` wants [golangci-lint](https://golangci-lint.run)
+Other scripts: `seed`, `reset`, `build`, `fmt`, `format`, `typecheck`, `test`,
+`test:race`, `record`, `build:pages`, `preview:pages`, `up`, `down`, `db:down`.
+`npm run lint` wants [golangci-lint](https://golangci-lint.run)
 (`go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@latest`); CI runs
 the same config plus `go test ./... -race`, which needs cgo and so will not run locally
 without a C compiler.
@@ -132,8 +133,9 @@ the demo exists to show.
 ## Demo scenarios
 
 Open **Demos** in the console. Each card fires a scripted traffic pattern at the API
-from the server itself, using synthetic source IPs from the RFC 5737 documentation
-ranges, so your own browser is never rate-limited by a run.
+from the server itself, using synthetic source IPs from reserved ranges -- the RFC
+5737 documentation blocks, plus RFC 2544 benchmarking space for the forged headers
+in `xff-spoof` -- so your own browser is never rate-limited by a run.
 
 | Scenario       | What it does                                            | What it proves                                                                                    |
 | -------------- | ------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
