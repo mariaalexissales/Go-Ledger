@@ -9,6 +9,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -18,6 +19,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"slices"
 	"time"
 
 	"go-ledger/internal/demo"
@@ -154,7 +156,7 @@ func (r *recorder) recordScenario(id string, mode ops.ClientIPMode) error {
 	}
 
 	// The API returns newest first; replay wants chronological order.
-	reverse(events.Data)
+	slices.Reverse(events.Data)
 
 	f := fixture{
 		ScenarioID:   id,
@@ -180,6 +182,10 @@ func (r *recorder) recordScenario(id string, mode ops.ClientIPMode) error {
 	return nil
 }
 
+// recordedConfig is the write shape, and deliberately narrower than opsConfig:
+// `mutable` is a per-process fact that means nothing in a recording. The replay
+// console depends on the omission -- see the Omit<OpsConfig, ...> on ReplayIndex
+// in web/src/replay/fixtures.ts. Adding a field here changes the fixture format.
 type recordedConfig struct {
 	ClientIPMode ops.ClientIPMode `json:"client_ip_mode"`
 	RateLimit    ops.Policy       `json:"rate_limit"`
@@ -277,7 +283,7 @@ func (r *recorder) do(method, target string, body, dst any) error {
 		reader = bytes.NewReader(encoded)
 	}
 
-	req, err := http.NewRequest(method, target, reader)
+	req, err := http.NewRequestWithContext(context.Background(), method, target, reader)
 	if err != nil {
 		return err
 	}
@@ -330,7 +336,9 @@ func (r *recorder) writeIfChanged(name string, v any) (bool, error) {
 	return true, os.WriteFile(path, encoded, 0o644)
 }
 
-// meaningfullyEqual reports whether two encoded fixtures differ in anything
+// meaningfullyEqual reports whether two encoded fixtures are the same once the
+// volatile keys are stripped -- that is, whether a fresh recording differs from
+// the committed one in anything but wall-clock stamps and loopback timings.
 func meaningfullyEqual(a, b any) bool {
 	left, err := json.Marshal(withoutVolatile(a))
 	if err != nil {
@@ -367,11 +375,5 @@ func withoutVolatile(v any) any {
 
 	default:
 		return v
-	}
-}
-
-func reverse[T any](items []T) {
-	for i, j := 0, len(items)-1; i < j; i, j = i+1, j-1 {
-		items[i], items[j] = items[j], items[i]
 	}
 }
