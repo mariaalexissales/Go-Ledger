@@ -24,10 +24,9 @@ var ErrAlreadyRunning = errors.New("a demo is already running")
 // destination is ever read from an HTTP request. Otherwise this would be an
 // SSRF gadget rather than a demo.
 type Runner struct {
-	baseURL  string
-	token    string
-	guard    *ops.SecurityGuard
-	resolver *ops.Resolver
+	baseURL string
+	token   string
+	guard   *ops.SecurityGuard
 
 	mu      sync.Mutex
 	running bool
@@ -35,10 +34,9 @@ type Runner struct {
 
 func NewRunner(baseURL, token string, guard *ops.SecurityGuard) *Runner {
 	return &Runner{
-		baseURL:  baseURL,
-		token:    token,
-		guard:    guard,
-		resolver: guard.Resolver(),
+		baseURL: baseURL,
+		token:   token,
+		guard:   guard,
 	}
 }
 
@@ -82,7 +80,7 @@ func (r *Runner) Run(ctx context.Context, id string) (*Result, error) {
 		ScenarioID:   scenario.Meta.ID,
 		StartedAt:    startedAt,
 		FinishedAt:   time.Now(),
-		ClientIPMode: string(r.resolver.Mode()),
+		ClientIPMode: string(r.guard.Resolver().Mode()),
 		RateLimit:    policy.Limit,
 		RateWindow:   policy.WindowText,
 		Steps:        client.Steps(),
