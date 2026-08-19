@@ -162,6 +162,15 @@ func (rl *RateLimiter) BlockedIPs() map[string]time.Time {
 	return out
 }
 
+// blockedCount reports how many entries the block map is holding, expired ones
+// included. Unlike BlockedIPs it does not filter, which is what makes it useful
+// for asserting the sweeper actually reclaims.
+func (rl *RateLimiter) blockedCount() int {
+	rl.mu.Lock()
+	defer rl.mu.Unlock()
+	return len(rl.blockedIPs)
+}
+
 func (rl *RateLimiter) cleanup(interval time.Duration) {
 	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
@@ -188,6 +197,16 @@ func (rl *RateLimiter) cleanup(interval time.Duration) {
 					delete(rl.requests, ip)
 				}
 			}
+
+			// Allow only clears an expired block when that same IP comes back,
+			// which for traffic spread across many sources never happens. Left
+			// to that path alone the map grows for the life of the process.
+			for ip, unblockTime := range rl.blockedIPs {
+				if !now.Before(unblockTime) {
+					delete(rl.blockedIPs, ip)
+				}
+			}
+
 			next := rl.window * 2
 			rl.mu.Unlock()
 

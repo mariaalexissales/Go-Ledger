@@ -1,24 +1,13 @@
-# Logs
-logs
-*.log
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-pnpm-debug.log*
-lerna-debug.log*
+# Only what is specific to this directory. Build output (dist/, dist-pages/),
+# node_modules/, *.tsbuildinfo and the router plugin's .tanstack/ scratch dir
+# are all covered by the repository root .gitignore.
 
-node_modules
-dist
-dist-ssr
-*.local
+# Vite writes these for `vite build --mode <name>` overrides; they are local.
+.env.local
+.env.*.local
 
-# Editor directories and files
+# Editor and OS noise the root file does not cover.
 .vscode/*
 !.vscode/extensions.json
 .idea
 .DS_Store
-*.suo
-*.ntvs*
-*.njsproj
-*.sln
-*.sw?

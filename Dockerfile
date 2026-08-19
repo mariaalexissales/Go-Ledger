@@ -34,7 +34,10 @@ RUN CGO_ENABLED=0 go build -tags embed_spa -trimpath -ldflags="-s -w" -o /out/se
 # --- Stage 3: runtime ---------------------------------------------------------
 FROM gcr.io/distroless/static-debian12:nonroot
 
-LABEL org.opencontainers.image.title="go-ledger"       org.opencontainers.image.description="Ledger API demonstrating IP rate limiting and X-Forwarded-For trust"       org.opencontainers.image.source="https://github.com/mariaalexissales/Go-Ledger"       org.opencontainers.image.licenses="MIT"
+LABEL org.opencontainers.image.title="go-ledger" \
+      org.opencontainers.image.description="Ledger API demonstrating IP rate limiting and X-Forwarded-For trust" \
+      org.opencontainers.image.source="https://github.com/mariaalexissales/Go-Ledger" \
+      org.opencontainers.image.licenses="MIT"
 
 COPY --from=build /out/server /server
 

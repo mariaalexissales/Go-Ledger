@@ -11,7 +11,7 @@ runs:
       shell: bash
       run: test -f web/public/replay/index.json
 
-    - uses: actions/setup-node@v4
+    - uses: actions/setup-node@v7
       with:
         node-version-file: .nvmrc
         cache: npm

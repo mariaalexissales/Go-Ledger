@@ -22,8 +22,9 @@ export default defineConfig(({ mode }) => {
   const outDir = replay ? 'dist-pages' : '../internal/spa/dist'
 
   return {
-    // '/go-ledger/' on Pages, '/' everywhere else. Asset URLs and the fixture
-    // paths in src/replay/fixtures.ts both derive from this.
+    // '/Go-Ledger/' on Pages, '/' everywhere else. Case matters: Pages serves
+    // the project path exactly as the repository is named. Asset URLs and the
+    // fixture paths in src/replay/fixtures.ts both derive from this.
     base: env.VITE_BASE || '/',
     plugins: [
       // Must run before the react plugin so generated routes are transformed.

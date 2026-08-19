@@ -91,6 +91,46 @@ func TestRateLimiterBlockedIPs(t *testing.T) {
 	}
 }
 
+func TestRateLimiterSweeperDropsExpiredBlocks(t *testing.T) {
+	// The sweeper runs every window*2, so a 10ms window gives it a 20ms tick.
+	rl := NewRateLimiter(1, 10*time.Millisecond, 20*time.Millisecond)
+	t.Cleanup(rl.Close)
+
+	// One blocked IP that never comes back. Allow is the only other path that
+	// clears a block, and it only ever clears the IP it was called with.
+	rl.Allow("198.51.100.9")
+	rl.Allow("198.51.100.9")
+
+	if got := rl.blockedCount(); got != 1 {
+		t.Fatalf("blockedIPs has %d entries before the sweep, want 1", got)
+	}
+
+	deadline := time.Now().Add(2 * time.Second)
+	for rl.blockedCount() > 0 && time.Now().Before(deadline) {
+		time.Sleep(5 * time.Millisecond)
+	}
+
+	if got := rl.blockedCount(); got != 0 {
+		t.Errorf("blockedIPs still has %d entries; the sweeper is not reclaiming expired blocks", got)
+	}
+}
+
+func TestRateLimiterSweeperKeepsLiveBlocks(t *testing.T) {
+	rl := NewRateLimiter(1, 10*time.Millisecond, time.Hour)
+	t.Cleanup(rl.Close)
+
+	rl.Allow("198.51.100.10")
+	rl.Allow("198.51.100.10")
+
+	// Long enough for several sweeps. The block has an hour to run, so none of
+	// them may touch it.
+	time.Sleep(80 * time.Millisecond)
+
+	if got := rl.blockedCount(); got != 1 {
+		t.Errorf("blockedIPs has %d entries, want the unexpired block retained", got)
+	}
+}
+
 func TestRateLimiterSetPolicyClearsState(t *testing.T) {
 	rl := NewRateLimiter(1, time.Minute, time.Minute)
 	t.Cleanup(rl.Close)

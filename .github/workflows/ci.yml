@@ -67,3 +67,8 @@ jobs:
 
       - name: Test
         run: npm run test
+
+      # Typecheck does not catch a Vite-only failure. Without this the first
+      # sign of a broken bundle is the Pages deploy, after the merge.
+      - name: Build
+        run: npm run build

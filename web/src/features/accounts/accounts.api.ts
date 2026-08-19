@@ -1,7 +1,6 @@
 import { api, type ListResponse } from '@/lib/http/client'
 import type { Account, AccountListParams, CreateAccountRequest } from './accounts.types'
-import type { Transaction } from '@/features/transactions/transactions.types'
-import type { TransactionListParams } from '@/features/transactions/transactions.types'
+import type { Transaction, TransactionListParams } from '@/features/transactions/transactions.types'
 
 /**
  * Transport only, no React and no cache. Components import the hooks in

@@ -12,33 +12,10 @@ const (
 	maxLimit     = 100
 )
 
-// pageParams carries the normalized limit/offset for a list endpoint.
-type pageParams struct {
-	Limit  int
-	Offset int
-}
-
-// parsePageParams reads limit/offset from the query string. Malformed or
-// out-of-range values fall back to the defaults rather than erroring. A list
-// endpoint returning 400 for a stray query param is more annoying than useful.
-func parsePageParams(r *http.Request) pageParams {
-	q := r.URL.Query()
-
-	limit := defaultLimit
-	if n, err := strconv.Atoi(q.Get("limit")); err == nil && n > 0 {
-		limit = min(n, maxLimit)
-	}
-
-	offset := 0
-	if n, err := strconv.Atoi(q.Get("offset")); err == nil && n > 0 {
-		offset = n
-	}
-
-	return pageParams{Limit: limit, Offset: offset}
-}
-
-func writeList[T any](w http.ResponseWriter, items []T, total int, p pageParams) {
-	httpx.WriteList(w, items, total, p.Limit, p.Offset)
+// parsePageParams reads the ledger endpoints' limit/offset. The observability
+// plane pages the same way with looser caps -- see Console.listEvents.
+func parsePageParams(r *http.Request) httpx.Page {
+	return httpx.ParsePage(r, defaultLimit, maxLimit)
 }
 
 // optionalIntParam returns a pointer so the value can be passed straight to a

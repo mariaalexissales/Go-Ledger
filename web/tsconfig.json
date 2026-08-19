@@ -23,7 +23,9 @@
     "noUncheckedSideEffectImports": true,
 
     "paths": { "@/*": ["./src/*"] },
-    "types": ["vite/client"]
+    // "node" is needed for vite.config.ts, which imports node:fs and node:path
+    // and is typechecked via the include below.
+    "types": ["vite/client", "node"]
   },
-  "include": ["src"]
+  "include": ["src", "vite.config.ts"]
 }

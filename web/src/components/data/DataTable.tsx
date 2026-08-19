@@ -30,6 +30,8 @@ export interface Column<T> {
   width?: number
   align?: 'left' | 'right' | 'center'
   /**
+   * Formats the raw cell value for this column's `key`. Ignored when `render`
+   * is set, which takes the whole row instead.
    */
   format?(value: unknown, row: T): ReactNode
   render?: (row: T) => ReactNode

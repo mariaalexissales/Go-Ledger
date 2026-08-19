@@ -1,4 +1,5 @@
-// Layer 2 - API to create and interact with accounts and transactions
+// Package api assembles the HTTP surface: the guarded ledger routes, the
+// unguarded observability plane, and the SPA fallback behind them.
 package api
 
 import (

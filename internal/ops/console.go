@@ -3,7 +3,6 @@ package ops
 import (
 	"fmt"
 	"net/http"
-	"strconv"
 	"strings"
 	"time"
 
@@ -13,6 +12,11 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+)
+
+const (
+	eventsDefaultLimit = 50
+	eventsMaxLimit     = 500
 )
 
 // Console is the observability plane: the read side of the security logger,
@@ -143,14 +147,9 @@ func (c *Console) resetEvents(w http.ResponseWriter, r *http.Request) {
 func (c *Console) listEvents(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 
-	limit := 50
-	if n, err := strconv.Atoi(q.Get("limit")); err == nil && n > 0 {
-		limit = min(n, 500)
-	}
-	offset := 0
-	if n, err := strconv.Atoi(q.Get("offset")); err == nil && n > 0 {
-		offset = n
-	}
+	// Looser than the ledger endpoints: the event feed is read by a dashboard
+	// pulling a whole run at once, not by a human clicking through pages.
+	page := httpx.ParsePage(r, eventsDefaultLimit, eventsMaxLimit)
 
 	// ip_address accepts a comma-separated set so the demos page can scope the
 	// feed to just the IPs a run used.
@@ -188,14 +187,14 @@ func (c *Console) listEvents(w http.ResponseWriter, r *http.Request) {
 			return EventDTO{}, err
 		}
 		return NewEventDTO(e), nil
-	}, q.Get("flag_status"), ips, q.Get("action_type"), since, limit, offset)
+	}, q.Get("flag_status"), ips, q.Get("action_type"), since, page.Limit, page.Offset)
 
 	if err != nil {
 		httpx.WriteServerError(w, r, "failed to list security events", err)
 		return
 	}
 
-	httpx.WriteList(w, events, total, limit, offset)
+	httpx.WriteListPage(w, events, total, page)
 }
 
 type statsResponse struct {

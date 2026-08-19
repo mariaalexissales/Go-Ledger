@@ -43,3 +43,9 @@ bin/
 
 # Coverage output (vitest writes a directory; go writes *.out, covered above)
 coverage/
+
+# Working notes for the in-progress cleanup pass: an architecture walkthrough
+# and an audit findings list. Deliberately local -- they describe a half-done
+# state and would be misleading in the repo until the open items are closed.
+# Delete these two lines to publish them.
+docs/

@@ -39,7 +39,7 @@ func (a *API) listAccounts(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	writeList(w, accounts, total, page)
+	httpx.WriteListPage(w, accounts, total, page)
 }
 
 // POST: Create Accounts
