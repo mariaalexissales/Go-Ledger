@@ -1,7 +1,5 @@
 import { useEffect, useId, useRef, useState } from 'react'
-import Box from '@mui/material/Box'
-import Stack from '@mui/material/Stack'
-import Typography from '@mui/material/Typography'
+import { Box, Stack, Typography } from '@mui/material'
 import { visuallyHidden } from '@mui/utils'
 
 /**

@@ -1,14 +1,16 @@
 import type { ReactNode } from 'react'
-import Box from '@mui/material/Box'
-import LinearProgress from '@mui/material/LinearProgress'
-import Skeleton from '@mui/material/Skeleton'
-import Table from '@mui/material/Table'
-import TableBody from '@mui/material/TableBody'
-import TableCell from '@mui/material/TableCell'
-import TableContainer from '@mui/material/TableContainer'
-import TableHead from '@mui/material/TableHead'
-import TablePagination from '@mui/material/TablePagination'
-import TableRow from '@mui/material/TableRow'
+import {
+  Box,
+  LinearProgress,
+  Skeleton,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TablePagination,
+  TableRow,
+} from '@mui/material'
 import { EmptyState } from '@/components/feedback/States'
 
 /**
