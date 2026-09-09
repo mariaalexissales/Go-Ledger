@@ -45,20 +45,35 @@ export function EventStreamProvider({ children }: { children: ReactNode }) {
   const invalidateTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
+    const push = (event: SecurityEvent) =>
+      setEvents((current) => [event, ...current].slice(0, MAX_LIVE_EVENTS))
+
+    const scheduleInvalidate = (delayMs: number) => {
+      if (invalidateTimer.current) return
+      invalidateTimer.current = setTimeout(() => {
+        invalidateTimer.current = null
+        queryClient.invalidateQueries({ queryKey: qk.security.all })
+      }, delayMs)
+    }
+
+    const clearInvalidate = () => {
+      if (invalidateTimer.current) clearTimeout(invalidateTimer.current)
+    }
+
     // Replay mode has no server to stream from. Recorded events arrive on a
     // local bus at their recorded cadence instead.
     if (REPLAY) {
       setStatus('open')
 
-      return replayBus.subscribe((event) => {
-        setEvents((current) => [event, ...current].slice(0, MAX_LIVE_EVENTS))
-
-        if (invalidateTimer.current) return
-        invalidateTimer.current = setTimeout(() => {
-          invalidateTimer.current = null
-          queryClient.invalidateQueries({ queryKey: qk.security.all })
-        }, 400)
+      const unsubscribe = replayBus.subscribe((event) => {
+        push(event)
+        scheduleInvalidate(400)
       })
+
+      return () => {
+        unsubscribe()
+        clearInvalidate()
+      }
     }
 
     const source = new EventSource(securityApi.streamUrl())
@@ -74,13 +89,8 @@ export function EventStreamProvider({ children }: { children: ReactNode }) {
         return
       }
 
-      setEvents((current) => [event, ...current].slice(0, MAX_LIVE_EVENTS))
-
-      if (invalidateTimer.current) return
-      invalidateTimer.current = setTimeout(() => {
-        invalidateTimer.current = null
-        queryClient.invalidateQueries({ queryKey: qk.security.all })
-      }, 1200)
+      push(event)
+      scheduleInvalidate(1200)
     })
 
     source.addEventListener('lag', (message) => {
@@ -94,7 +104,7 @@ export function EventStreamProvider({ children }: { children: ReactNode }) {
 
     return () => {
       source.close()
-      if (invalidateTimer.current) clearTimeout(invalidateTimer.current)
+      clearInvalidate()
     }
   }, [queryClient])
 
