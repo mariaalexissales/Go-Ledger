@@ -225,7 +225,7 @@ func (c *Console) getStats(w http.ResponseWriter, r *http.Request) {
 	since := time.Now().Add(-window)
 	resp := statsResponse{
 		Window:     window.String(),
-		Totals:     map[string]int{FlagAllowed: 0, FlagBlocked: 0},
+		Totals:     map[string]int{},
 		TopIPs:     []ipStat{},
 		Buckets:    []bucketStat{},
 		BlockedNow: []blockedIP{},

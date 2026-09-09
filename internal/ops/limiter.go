@@ -21,7 +21,7 @@ type RateLimiter struct {
 	closeOnce sync.Once
 }
 
-func NewRateLimiter(limit int, window time.Duration, blockPeriod time.Duration) *RateLimiter {
+func NewRateLimiter(limit int, window, blockPeriod time.Duration) *RateLimiter {
 	rl := &RateLimiter{
 		requests:    make(map[string][]time.Time),
 		limit:       limit,
@@ -73,12 +73,7 @@ func (rl *RateLimiter) Allow(ip string) Decision {
 		delete(rl.blockedIPs, ip)
 	}
 
-	var validTimestamps []time.Time
-	for _, t := range rl.requests[ip] {
-		if now.Sub(t) <= rl.window {
-			validTimestamps = append(validTimestamps, t)
-		}
-	}
+	validTimestamps := rl.withinWindow(rl.requests[ip], now)
 
 	if len(validTimestamps) >= rl.limit {
 		unblockTime := now.Add(rl.blockPeriod)
@@ -133,8 +128,7 @@ func (rl *RateLimiter) SetPolicy(limit int, window, blockPeriod time.Duration) {
 	rl.limit = limit
 	rl.window = window
 	rl.blockPeriod = blockPeriod
-	rl.requests = make(map[string][]time.Time)
-	rl.blockedIPs = make(map[string]time.Time)
+	rl.clearState()
 }
 
 // Reset clears all tracked requests and blocks without changing the policy.
@@ -142,6 +136,22 @@ func (rl *RateLimiter) Reset() {
 	rl.mu.Lock()
 	defer rl.mu.Unlock()
 
+	rl.clearState()
+}
+
+// withinWindow drops the timestamps that have aged out. Callers hold rl.mu.
+func (rl *RateLimiter) withinWindow(timestamps []time.Time, now time.Time) []time.Time {
+	var valid []time.Time
+	for _, t := range timestamps {
+		if now.Sub(t) <= rl.window {
+			valid = append(valid, t)
+		}
+	}
+	return valid
+}
+
+// clearState drops every tracked request and block. Callers hold rl.mu.
+func (rl *RateLimiter) clearState() {
 	rl.requests = make(map[string][]time.Time)
 	rl.blockedIPs = make(map[string]time.Time)
 }
@@ -185,13 +195,7 @@ func (rl *RateLimiter) cleanup(interval time.Duration) {
 			rl.mu.Lock()
 			now := time.Now()
 			for ip, timestamps := range rl.requests {
-				var valid []time.Time
-				for _, t := range timestamps {
-					if now.Sub(t) <= rl.window {
-						valid = append(valid, t)
-					}
-				}
-				if len(valid) > 0 {
+				if valid := rl.withinWindow(timestamps, now); len(valid) > 0 {
 					rl.requests[ip] = valid
 				} else {
 					delete(rl.requests, ip)
