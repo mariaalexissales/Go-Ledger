@@ -5,6 +5,8 @@ import (
 	"strconv"
 
 	"go-ledger/internal/httpx"
+
+	"github.com/go-chi/chi/v5"
 )
 
 const (
@@ -16,6 +18,17 @@ const (
 // plane pages the same way with looser caps -- see Console.listEvents.
 func parsePageParams(r *http.Request) httpx.Page {
 	return httpx.ParsePage(r, defaultLimit, maxLimit)
+}
+
+// pathIntParam reads the {id} path parameter, writing a 400 and reporting false
+// when it is not an integer.
+func pathIntParam(w http.ResponseWriter, r *http.Request, noun string) (int, bool) {
+	id, err := strconv.Atoi(chi.URLParam(r, "id"))
+	if err != nil {
+		httpx.WriteError(w, http.StatusBadRequest, "invalid "+noun+" id")
+		return 0, false
+	}
+	return id, true
 }
 
 // optionalIntParam returns a pointer so the value can be passed straight to a

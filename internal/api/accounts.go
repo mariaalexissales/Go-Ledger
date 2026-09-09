@@ -3,10 +3,8 @@ package api
 import (
 	"errors"
 	"net/http"
-	"strconv"
 	"strings"
 
-	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5"
 
 	"go-ledger/internal/db"
@@ -73,16 +71,14 @@ func (a *API) createAccount(w http.ResponseWriter, r *http.Request) {
 
 // GET: Get Account /{id}
 func (a *API) getAccount(w http.ResponseWriter, r *http.Request) {
-	id, err := strconv.Atoi(chi.URLParam(r, "id"))
-
-	if err != nil {
-		httpx.WriteError(w, http.StatusBadRequest, "invalid account id")
+	id, ok := pathIntParam(w, r, "account")
+	if !ok {
 		return
 	}
 
 	var acc Account
 
-	err = a.DB.QueryRow(r.Context(), `
+	err := a.DB.QueryRow(r.Context(), `
 		SELECT id, name, balance, created_at
 		FROM accounts
 		WHERE id = $1
@@ -102,10 +98,8 @@ func (a *API) getAccount(w http.ResponseWriter, r *http.Request) {
 
 // DELETE: Delete Account /{id}
 func (a *API) deleteAccount(w http.ResponseWriter, r *http.Request) {
-	id, err := strconv.Atoi(chi.URLParam(r, "id"))
-
-	if err != nil {
-		httpx.WriteError(w, http.StatusBadRequest, "invalid account id")
+	id, ok := pathIntParam(w, r, "account")
+	if !ok {
 		return
 	}
 

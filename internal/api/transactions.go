@@ -5,9 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"strconv"
 
-	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgerrcode"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
@@ -71,9 +69,8 @@ func (a *API) listTransactions(w http.ResponseWriter, r *http.Request) {
 
 // GET: List one account's transactions /accounts/{id}/transactions
 func (a *API) listAccountTransactions(w http.ResponseWriter, r *http.Request) {
-	id, err := strconv.Atoi(chi.URLParam(r, "id"))
-	if err != nil {
-		httpx.WriteError(w, http.StatusBadRequest, "invalid account id")
+	id, ok := pathIntParam(w, r, "account")
+	if !ok {
 		return
 	}
 
@@ -171,16 +168,14 @@ func (a *API) createTransaction(w http.ResponseWriter, r *http.Request) {
 
 // GET /transactions/{id}.
 func (a *API) getTransaction(w http.ResponseWriter, r *http.Request) {
-	id, err := strconv.Atoi(chi.URLParam(r, "id"))
-
-	if err != nil {
-		httpx.WriteError(w, http.StatusBadRequest, "invalid transaction id")
+	id, ok := pathIntParam(w, r, "transaction")
+	if !ok {
 		return
 	}
 
 	var txn Transaction
 
-	err = a.DB.QueryRow(r.Context(), `
+	err := a.DB.QueryRow(r.Context(), `
 		SELECT id, account_id, amount, timestamp
 		FROM transactions
 		WHERE id = $1
@@ -200,13 +195,12 @@ func (a *API) getTransaction(w http.ResponseWriter, r *http.Request) {
 
 // DELETE /transactions/{id}.
 func (a *API) deleteTransaction(w http.ResponseWriter, r *http.Request) {
-	id, err := strconv.Atoi(chi.URLParam(r, "id"))
-	if err != nil {
-		httpx.WriteError(w, http.StatusBadRequest, "invalid transaction id")
+	id, ok := pathIntParam(w, r, "transaction")
+	if !ok {
 		return
 	}
 
-	err = a.withTx(r.Context(), func(ctx context.Context, tx pgx.Tx) error {
+	err := a.withTx(r.Context(), func(ctx context.Context, tx pgx.Tx) error {
 		cmdTag, err := tx.Exec(ctx, `
 			DELETE FROM transactions
 			WHERE id = $1
