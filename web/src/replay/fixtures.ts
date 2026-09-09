@@ -1,3 +1,4 @@
+import { ApiError } from '@/lib/http/errors'
 import type { Account } from '@/features/accounts/accounts.types'
 import type { Transaction } from '@/features/transactions/transactions.types'
 import type { DemoMeta, DemoResult } from '@/features/demos/demos.types'
@@ -41,7 +42,7 @@ const fixtureCache = new Map<string, Promise<ReplayFixture>>()
 async function loadJSON<T>(name: string): Promise<T> {
   const res = await fetch(ROOT + name)
   if (!res.ok) {
-    throw new Error(`missing replay fixture ${name}, run \`npm run record\``)
+    throw new ApiError(res.status, `missing replay fixture ${name}, run \`npm run record\``)
   }
   return (await res.json()) as T
 }
