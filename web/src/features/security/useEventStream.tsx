@@ -14,7 +14,6 @@ import type { SecurityEvent } from './security.types'
 import { REPLAY } from '@/replay/mode'
 import { replayBus } from '@/replay/bus'
 
-/** How many live events to keep in memory before dropping the oldest. */
 const MAX_LIVE_EVENTS = 500
 
 type StreamStatus = 'connecting' | 'open' | 'error'
@@ -22,21 +21,12 @@ type StreamStatus = 'connecting' | 'open' | 'error'
 interface EventStreamValue {
   events: SecurityEvent[]
   status: StreamStatus
-  /** Events the server discarded because this client fell behind. */
   dropped: number
   clear: () => void
 }
 
 const EventStreamContext = createContext<EventStreamValue | null>(null)
 
-/**
- * One EventSource for the whole app, mounted in the root layout.
- *
- * The browser sends Last-Event-ID automatically on reconnect and the server
- * replays the gap, so an HMR reload or a sleeping laptop does not silently lose
- * events. Stats queries are invalidated on a debounce rather than per event,
- * because a burst scenario delivers hundreds of events in a second.
- */
 export function EventStreamProvider({ children }: { children: ReactNode }) {
   const queryClient = useQueryClient()
   const [events, setEvents] = useState<SecurityEvent[]>([])
@@ -79,7 +69,7 @@ export function EventStreamProvider({ children }: { children: ReactNode }) {
     const source = new EventSource(securityApi.streamUrl())
 
     source.onopen = () => setStatus('open')
-    source.onerror = () => setStatus('error') // EventSource retries on its own.
+    source.onerror = () => setStatus('error')
 
     source.addEventListener('security_event', (message) => {
       let event: SecurityEvent
@@ -97,9 +87,7 @@ export function EventStreamProvider({ children }: { children: ReactNode }) {
       try {
         const payload = JSON.parse((message as MessageEvent<string>).data) as { dropped: number }
         setDropped(payload.dropped)
-      } catch {
-        // Ignore a malformed lag frame.
-      }
+      } catch {}
     })
 
     return () => {

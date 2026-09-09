@@ -21,6 +21,5 @@ export const securityApi = {
 
   resetEvents: () => api.post<void>('/ops/events/reset'),
 
-  /** URL for the EventSource subscription; the browser opens it directly. */
   streamUrl: () => apiUrl('/ops/events/stream'),
 }

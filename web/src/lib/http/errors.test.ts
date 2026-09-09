@@ -1,11 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { ApiError, toApiError } from './errors'
 
-/**
- * The whole reason this module exists: the API surface does not speak one error
- * dialect. Anything that assumes it does breaks in the error path, which is
- * exactly where you cannot afford a second failure.
- */
 function response(body: string, status: number, headers?: HeadersInit) {
   return new Response(body, { status, headers })
 }
@@ -59,6 +54,6 @@ describe('toApiError', () => {
   it('caps a long body so an HTML error page cannot fill the UI', async () => {
     const error = await toApiError(response('x'.repeat(500), 500))
 
-    expect(error.message).toHaveLength(201) // 200 chars plus the ellipsis
+    expect(error.message).toHaveLength(201)
   })
 })

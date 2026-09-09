@@ -8,9 +8,6 @@ import { replayLedger } from './ledger'
 import { EVENTS_PAGE, LEDGER_PAGE, paginate } from './paging'
 import { computeStats } from './stats'
 
-// Module state, not a store: replay is single-tab, single-run. `mode` starts
-// null and is filled from the index on first read, so a fixture load is not
-// needed just to render the page.
 let mode: ClientIPMode | null = null
 let replayedEvents: SecurityEvent[] = []
 
@@ -117,7 +114,6 @@ async function route(method: string, path: string, query: Params, body: unknown)
       rows = rows.filter((event) => event.action_type.toLowerCase().includes(action))
     }
 
-    // Newest first, matching the server's ORDER BY.
     return paginate([...rows].reverse(), query, EVENTS_PAGE.fallback, EVENTS_PAGE.max)
   }
 
@@ -141,11 +137,6 @@ async function route(method: string, path: string, query: Params, body: unknown)
   throw new ApiError(404, 'not found')
 }
 
-/**
- * Replays a recorded run. Events go out on the bus at their recorded cadence
- * and the promise resolves only once the last one lands, so the progress bar
- * and pending state behave exactly as they do against the live server.
- */
 async function runScenario(scenarioId: string): Promise<DemoResult> {
   const fixture = await loadFixture(scenarioId, await currentMode())
 
@@ -159,8 +150,6 @@ async function runScenario(scenarioId: string): Promise<DemoResult> {
     ...fixture.result,
     summary: {
       ...fixture.result.summary,
-      // Report the recorded duration rather than the stretched replay window.
-      // The recorded one is the real measurement.
       duration_ms: pacing.recordedMs || fixture.result.summary.duration_ms,
     },
   }
@@ -182,9 +171,6 @@ async function currentConfig(): Promise<OpsConfig> {
   return {
     ...index.config,
     client_ip_mode: await currentMode(),
-    // Per-process facts the recorder strips, since they mean nothing in a
-    // recording. `mutable` is true because both modes were recorded, so the
-    // vulnerable/hardened toggle genuinely works here.
     mutable: true,
     your_ip: 'recorded',
     remote_addr: 'recorded',

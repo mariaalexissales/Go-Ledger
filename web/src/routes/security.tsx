@@ -58,7 +58,6 @@ function SecurityPage() {
       ),
     },
     { key: 'method', header: 'Method', width: 90 },
-    // The one column without a width: it takes whatever is left.
     { key: 'path', header: 'Path' },
     {
       key: 'flag_status',

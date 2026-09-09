@@ -41,14 +41,11 @@ function RootLayout() {
 function AppShell() {
   const pathname = useRouterState({ select: (s) => s.location.pathname })
 
-  // Prefix match, so /accounts/3 still highlights Accounts.
   const active =
     NAV.find((item) => (item.to === '/' ? pathname === '/' : pathname.startsWith(item.to)))?.to ??
     '/'
 
   return (
-    // No background here on purpose. The page ground, texture and radial
-    // washes, is painted on body, and an opaque shell would cover it.
     <Box sx={{ minHeight: '100vh' }}>
       <ReplayBanner />
 

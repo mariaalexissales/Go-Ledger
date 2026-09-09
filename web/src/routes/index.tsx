@@ -100,8 +100,6 @@ function DashboardPage() {
               <Typography variant="body2" color="text.secondary">
                 Rate limit {config.data.rate_limit.limit} per {config.data.rate_limit.window}, block{' '}
                 {config.data.rate_limit.block_period}. The guard sees this browser as{' '}
-                {/* The whole UI is mono, so inline code needs color to stand
-                    out of prose rather than a font family switch. */}
                 <Box component="span" sx={{ color: 'primary.main' }}>
                   {config.data.your_ip}
                 </Box>
@@ -132,8 +130,6 @@ function DashboardPage() {
               <StackedBars
                 label={`Requests per minute, last ${stats.data.window}`}
                 series={[
-                  // Cyan is the readout color: an allowed request is the guard
-                  // reporting nominal. Blocked is the fault.
                   { label: 'Allowed', color: 'var(--mui-palette-success-main)' },
                   { label: 'Blocked', color: 'var(--mui-palette-error-main)' },
                 ]}

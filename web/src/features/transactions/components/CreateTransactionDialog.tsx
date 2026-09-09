@@ -14,13 +14,6 @@ import {
 import { useCreateTransaction } from '../transactions.queries'
 import { ErrorState } from '@/components/feedback/States'
 
-/**
- * The form holds strings (that is what an <input> gives you) and converts on
- * submit. The conversion is not cosmetic: `amount` and `account_id` must reach
- * the server as JSON *numbers*, because pgtype.Numeric hands the raw bytes to
- * the Postgres numeric parser and a quoted string comes back as
- * 400 "invalid request body".
- */
 const schema = z.object({
   account_id: z
     .string()

@@ -52,7 +52,6 @@ function Counter({
 }
 
 function StepRow({ step }: { step: DemoStep }) {
-  // A step with no method is an annotation the scenario wrote, not a request.
   if (!step.method) {
     return (
       <Typography variant="caption" color="text.disabled" sx={{ px: 1, py: 0.5 }}>

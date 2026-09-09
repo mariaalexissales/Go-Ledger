@@ -1,31 +1,13 @@
 import type { Components, Theme } from '@mui/material/styles'
 
-/**
- * Component overrides. Styling belongs here rather than in `sx` props on route
- * files, which should only reach for semantic colors.
- */
-
-/**
- * `vars` is optional on the base Theme type, since a theme can be built without
- * the CSS-variables API. This one always has it, set by `cssVariables` in
- * ./index.ts. Reading `theme.palette` instead would bake in the default
- * scheme's literal values and break the light/dark toggle.
- */
 const v = (theme: Omit<Theme, 'components'>) => theme.vars!
 
-/** Uppercase, letterspaced, small. The label voice used throughout. */
 const LABEL = {
   textTransform: 'uppercase',
   letterSpacing: '.08em',
   fontWeight: 600,
 } as const
 
-/**
- * The chevron marker from the palette, drawn as geometry rather than text.
- *
- * Screen readers announce pseudo-element text content, so `content: '❯'` would
- * have every card header read out as "greater-than sign".
- */
 const CHEVRON = {
   content: '""',
   display: 'inline-block',
@@ -39,15 +21,6 @@ const CHEVRON = {
 export const components: Components<Omit<Theme, 'components'>> = {
   MuiCssBaseline: {
     styleOverrides: (theme) => ({
-      /**
-       * The page ground: scanline texture plus the two radial washes.
-       *
-       * These are background layers, not an overlay. Cards and panels paint
-       * opaque over them, so the texture shows in the ground and the gutters
-       * and never touches text or the chart. `background-attachment: fixed`
-       * keeps the washes anchored to the viewport instead of sliding down a
-       * long page.
-       */
       body: {
         backgroundColor: v(theme).palette.background.default,
         backgroundImage: [
@@ -68,12 +41,10 @@ export const components: Components<Omit<Theme, 'components'>> = {
         backgroundColor: v(theme).palette.primary.main,
         color: v(theme).palette.estral.void,
       },
-      // Ghost violet, never gray.
       '*': {
         scrollbarWidth: 'thin',
         scrollbarColor: `${v(theme).palette.estral.hairlineStrong} transparent`,
       },
-      // The default focus ring is a browser blue that has no business here.
       ':focus-visible': {
         outline: `1px solid ${v(theme).palette.primary.main}`,
         outlineOffset: 2,
@@ -86,10 +57,6 @@ export const components: Components<Omit<Theme, 'components'>> = {
     styleOverrides: {
       root: ({ theme }) => ({
         borderColor: v(theme).palette.estral.hairline,
-        // Paper paints `--Paper-overlay`, a white gradient, at any elevation
-        // above 0. Menu, Dialog, Popover and Select all hardcode elevation 8
-        // or 24, so without this the substrate washes out to gray on every
-        // overlay in the app. Gray is the one thing this palette does not have.
         backgroundImage: 'none',
       }),
     },
@@ -120,9 +87,6 @@ export const components: Components<Omit<Theme, 'components'>> = {
   },
 
   MuiTabs: {
-    // Uppercase plus letterspacing on a monospace runs wide. Five tabs, a
-    // stream chip and a theme toggle share one toolbar, and they collide well
-    // before the mobile breakpoint. Scrollable keeps that from clipping.
     defaultProps: { variant: 'scrollable', scrollButtons: 'auto' },
     styleOverrides: {
       indicator: ({ theme }) => ({
@@ -136,8 +100,6 @@ export const components: Components<Omit<Theme, 'components'>> = {
     styleOverrides: {
       root: ({ theme }) => ({
         ...LABEL,
-        // Tighter than the standard label voice: this is the widest run of
-        // uppercase text in the app.
         letterSpacing: '.06em',
         fontSize: '.75rem',
         minHeight: 48,
@@ -156,8 +118,6 @@ export const components: Components<Omit<Theme, 'components'>> = {
     },
     variants: [
       {
-        // Aberration. The transparent ground is deliberate: an RGB split over
-        // a saturated fill reads as mud. It needs the dark behind it.
         props: { variant: 'glitch' },
         style: ({ theme }) => ({
           backgroundColor: 'transparent',
@@ -188,9 +148,6 @@ export const components: Components<Omit<Theme, 'components'>> = {
     },
     variants: [
       {
-        // Gold is capped at one element per screen. No `severity` can express
-        // that, since MUI has five and none of them is gold. Making it a
-        // variant keeps the rule enforceable.
         props: { variant: 'verdict' },
         style: ({ theme }) => ({
           backgroundColor: 'transparent',
@@ -227,7 +184,6 @@ export const components: Components<Omit<Theme, 'components'>> = {
   MuiTableRow: {
     styleOverrides: {
       root: ({ theme }) => ({
-        // `hoverRow` in tokens.ts for why pressing down fails in light mode.
         '&:hover': { backgroundColor: v(theme).palette.estral.hoverRow },
       }),
     },
@@ -257,8 +213,6 @@ export const components: Components<Omit<Theme, 'components'>> = {
   MuiTooltip: {
     styleOverrides: {
       tooltip: ({ theme }) => ({
-        // The default is grey[700] at 92%. Warm-free, but unmistakably gray,
-        // and it would be the only gray surface in the app.
         backgroundColor: v(theme).palette.estral.substrate,
         border: `1px solid ${v(theme).palette.primary.main}`,
         fontSize: '.6875rem',

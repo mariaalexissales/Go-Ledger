@@ -163,13 +163,6 @@ function DemosPage() {
               <RunTimeline result={result} />
               <Divider />
               <CardContent>
-                {/*
-                  The one gold element in the app. Gold is capped at once per
-                  screen, so it goes to the single most useful thing on the
-                  page: the sentence saying what the run proved. It is a
-                  variant rather than a severity because no MUI severity is
-                  gold, and leaving it as info or warning let it drift.
-                */}
                 <Alert variant="verdict" icon={false}>
                   <AlertTitle>Verdict</AlertTitle>
                   {result.summary.verdict}

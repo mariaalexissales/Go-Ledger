@@ -1,11 +1,5 @@
 import { IP_RAMP_SIZE } from '@/theme'
 
-/**
- * `balance` and `amount` arrive as bare JSON numbers because the Go side uses
- * pgtype.Numeric, which marshals that way. The column is NUMERIC(15,2); the top
- * of that range sits at the edge of what a float64 represents exactly, which is
- * fine for a seeded demo ledger but would need a decimal type for real money.
- */
 const money = new Intl.NumberFormat(undefined, {
   style: 'currency',
   currency: 'USD',
@@ -50,16 +44,6 @@ export function formatDuration(ms: number): string {
   return `${(ms / 1000).toFixed(1)} s`
 }
 
-/**
- * Stable color per IP so a distributed scenario visually fans out in the feed.
- *
- * Indexes into the palette's `ipRamp`: 12 hues from blue-violet to hot across
- * two lightness tiers, defined per color scheme in theme/tokens.ts.
- *
- * Returns a CSS `var()` reference, so it is only valid in a property position.
- * Note that SVG presentation attributes are *not* one: `<rect fill={ipColor(…)}>`
- * renders black. Use `style={{ fill: … }}` there.
- */
 export function ipColor(ip: string): string {
   let hash = 0
   for (let i = 0; i < ip.length; i++) {

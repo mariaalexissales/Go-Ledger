@@ -1,18 +1,14 @@
-/** Mirrors demo.Meta. */
 export interface DemoMeta {
   id: string
   name: string
   summary: string
-  /** The point of the scenario, in plain English. */
   teaches: string
-  /** What to watch for while it runs. */
   expect: string
   tags: string[]
   estimated_seconds: number
   requires_vulnerable_mode: boolean
 }
 
-/** Mirrors demo.Step. A step with no method is an annotation, not a request. */
 export interface DemoStep {
   seq: number
   elapsed_ms: number
@@ -28,7 +24,6 @@ export interface DemoStep {
   error?: string
 }
 
-/** Mirrors demo.Summary. */
 interface DemoSummary {
   sent: number
   allowed: number
@@ -39,7 +34,6 @@ interface DemoSummary {
   verdict: string
 }
 
-/** Mirrors demo.Result. */
 export interface DemoResult {
   scenario_id: string
   started_at: string

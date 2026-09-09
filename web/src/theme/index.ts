@@ -35,27 +35,6 @@ declare module '@mui/material/Alert' {
   }
 }
 
-/**
- * Semantic mapping. Read this before changing a color, because two of these
- * are not what MUI's names imply:
- *
- *   success   Readout Cyan, not green. There is no green in this palette. An
- *             ALLOWED request reports nominal state, which is what cyan is
- *             reserved for. Anyone reading `color="success"` and expecting
- *             green will still be surprised.
- *   warning   Hot Trace. Covers the xff-trust-all chip and per-step errors and
- *             nothing else. A rate-limit block is a fault, so it uses `error`.
- *   info      Daemon Violet. The replay banner is the app describing itself,
- *             which is chrome rather than an alert.
- *
- * Gold is deliberately absent. It is not a semantic color. It appears exactly
- * once per screen, through `<Alert variant="verdict">`.
- *
- * `light`, `dark` and `contrastText` are pinned on every entry instead of
- * being left to `augmentColor`. MUI derives Alert backgrounds from
- * `palette.*.light`, and the sRGB interpolation it uses at `tonalOffset: 0.2`
- * drifts the hue off the ramp.
- */
 function palette(
   ramp: EstralRamp,
   shades: Record<string, [string, string]>,
@@ -81,12 +60,6 @@ function palette(
     text: { primary: ramp.bone, secondary: ramp.ghost, disabled: ramp.dim },
     divider: ramp.hairline,
 
-    /**
-     * MUI's defaults here are black and white washes, `rgba(0,0,0,0.04)` and
-     * similar. Left alone they put a warm neutral gray on every menu item,
-     * list row, icon button and disabled control, which the palette rules out.
-     * Re-derived from violet.
-     */
     action,
 
     estral: ramp,
@@ -129,36 +102,19 @@ const LIGHT_SHADES: Record<string, [string, string]> = {
 }
 
 export const theme = createTheme({
-  /**
-   * The CSS-variables color scheme API switches the theme without a re-render
-   * and without flashing the wrong palette on first paint.
-   */
   cssVariables: { colorSchemeSelector: 'class' },
 
-  /**
-   * Without this, MUI resolves the default to `light` whenever a light scheme
-   * exists. That would put light values on `:root` and flash a white viewport
-   * on every cold load of a near-black app. The pre-hydration script in
-   * index.html covers the case where the user has already chosen a scheme.
-   */
   defaultColorScheme: 'dark',
 
   colorSchemes: {
-    // contrastText sits on saturated fills. `#0A0711` rather than MUI's default
-    // `rgba(0,0,0,0.87)`: a true black is the one neutral this palette rules
-    // out, and void reads 5.8:1 or better on every accent above.
     dark: { palette: palette(ESTRAL_DARK, DARK_SHADES, ESTRAL_DARK.void, DARK_ACTION) },
     light: { palette: palette(ESTRAL_LIGHT, LIGHT_SHADES, ESTRAL_LIGHT.void, LIGHT_ACTION) },
   },
 
-  // Nothing in this system is rounded.
   shape: { borderRadius: 0 },
 
   typography: {
     fontFamily: monoFont,
-    // Only 400 and 600 are loaded. Left at the default 700, CssBaseline's
-    // `strong, b` rule synthesizes a faux-bold, which on a monospace breaks
-    // the fixed advance width and smears.
     fontWeightBold: 600,
     fontWeightMedium: 600,
 
@@ -167,8 +123,6 @@ export const theme = createTheme({
     h3: { fontSize: '1rem', fontWeight: 600, letterSpacing: '.1em', textTransform: 'uppercase' },
     overline: { letterSpacing: '.14em', fontWeight: 600 },
 
-    // Letterspacing belongs to the uppercase labels only. On a monospace it
-    // destroys the column rhythm that makes the face worth using.
     body1: { lineHeight: 1.65, letterSpacing: 0 },
     body2: { lineHeight: 1.6, letterSpacing: 0 },
   },

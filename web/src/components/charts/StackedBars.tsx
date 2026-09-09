@@ -2,28 +2,20 @@ import { useEffect, useId, useRef, useState } from 'react'
 import { Box, Stack, Typography } from '@mui/material'
 import { visuallyHidden } from '@mui/utils'
 
-/**
- * A stacked bar chart, in about a page of SVG.
- */
-
 interface Band {
   label: string
-  /** One entry per series, in the same order. */
   values: readonly number[]
 }
 
 interface Serie {
   label: string
-  /** Any CSS color. A `var(...)` reference is fine, see the note below. */
   color: string
 }
 
 const PAD = { top: 8, right: 8, bottom: 22, left: 36 }
 const HEIGHT = 260
-/** Past this the bars are narrower than the gaps between them and it is noise. */
 const MAX_BANDS = 200
 
-/** Rounds up to 1, 2 or 5 × 10ⁿ so the gridline labels are readable numbers. */
 function niceMax(value: number): number {
   if (value <= 0) return 1
 
@@ -54,7 +46,6 @@ export function StackedBars({
 }: {
   bands: readonly Band[]
   series: readonly Serie[]
-  /** Accessible name. Required, since a bare SVG is invisible to screen readers. */
   label: string
 }) {
   const ref = useRef<HTMLDivElement>(null)
@@ -77,7 +68,6 @@ export function StackedBars({
   const bandW = shown.length > 0 ? plotW / shown.length : 0
   const barW = Math.max(1, Math.min(bandW * 0.7, 28))
 
-  // Thin the x labels to whatever fits at ~52px each.
   const every = Math.max(1, Math.ceil(shown.length / Math.max(2, Math.floor(plotW / 52))))
 
   const seriesTotals = series.map((_, s) => shown.reduce((sum, b) => sum + (b.values[s] ?? 0), 0))
@@ -136,7 +126,6 @@ export function StackedBars({
               const cx = PAD.left + bandW * i + bandW / 2
               const total = totals[i]
 
-              // Stack from the bottom up, so the last series lands on top.
               let cursor = PAD.top + plotH
 
               return (
@@ -149,9 +138,6 @@ export function StackedBars({
                   </title>
 
                   {total === 0 ? (
-                    // A gap would read as "no data". The server emits explicit
-                    // zeros for quiet minutes, so this has to read as
-                    // "measured, and it was nothing".
                     <line
                       x1={cx - barW / 2}
                       x2={cx + barW / 2}
@@ -213,10 +199,6 @@ export function StackedBars({
         ))}
       </Stack>
 
-      {/*
-        role="img" makes the SVG opaque to screen readers, so the numbers have
-        to exist somewhere reachable. The chart this replaced had no equivalent.
-      */}
       <Box component="table" sx={visuallyHidden}>
         <caption>{label}</caption>
         <thead>
