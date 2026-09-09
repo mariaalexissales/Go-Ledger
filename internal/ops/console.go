@@ -3,7 +3,6 @@ package ops
 import (
 	"fmt"
 	"net/http"
-	"strings"
 	"time"
 
 	"go-ledger/internal/db"
@@ -153,15 +152,7 @@ func (c *Console) listEvents(w http.ResponseWriter, r *http.Request) {
 
 	// ip_address accepts a comma-separated set so the demos page can scope the
 	// feed to just the IPs a run used.
-	var ips []string
-	for _, part := range strings.Split(q.Get("ip_address"), ",") {
-		if part = strings.TrimSpace(part); part != "" {
-			ips = append(ips, part)
-		}
-	}
-	if ips == nil {
-		ips = []string{}
-	}
+	ips := parseIPFilter(q)
 
 	var since *time.Time
 	if v := q.Get("since"); v != "" {

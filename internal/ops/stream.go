@@ -6,6 +6,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
 	"time"
@@ -128,17 +129,27 @@ type eventFilter struct {
 	ips        map[string]struct{}
 }
 
+// parseIPFilter reads the comma-separated ip_address parameter shared by the
+// event list and the stream. It always returns a non-nil slice.
+func parseIPFilter(q url.Values) []string {
+	ips := []string{}
+	for _, part := range strings.Split(q.Get("ip_address"), ",") {
+		if part = strings.TrimSpace(part); part != "" {
+			ips = append(ips, part)
+		}
+	}
+	return ips
+}
+
 func parseEventFilter(r *http.Request) eventFilter {
 	q := r.URL.Query()
 	f := eventFilter{flagStatus: q.Get("flag_status")}
 
-	for _, part := range strings.Split(q.Get("ip_address"), ",") {
-		if part = strings.TrimSpace(part); part != "" {
-			if f.ips == nil {
-				f.ips = make(map[string]struct{})
-			}
-			f.ips[part] = struct{}{}
+	for _, ip := range parseIPFilter(q) {
+		if f.ips == nil {
+			f.ips = make(map[string]struct{})
 		}
+		f.ips[ip] = struct{}{}
 	}
 
 	return f
