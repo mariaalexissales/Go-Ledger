@@ -41,7 +41,7 @@ func NewRunner(baseURL, token string, guard *ops.SecurityGuard) *Runner {
 }
 
 func (r *Runner) Run(ctx context.Context, id string) (*Result, error) {
-	scenario, ok := Get(id)
+	scenario, ok := get(id)
 	if !ok {
 		return nil, fmt.Errorf("unknown scenario %q", id)
 	}

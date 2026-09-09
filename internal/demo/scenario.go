@@ -52,7 +52,7 @@ func All() []Meta {
 	return metas
 }
 
-func Get(id string) (Scenario, bool) {
+func get(id string) (Scenario, bool) {
 	for _, s := range scenarios {
 		if s.Meta.ID == id {
 			return s, true
