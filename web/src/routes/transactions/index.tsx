@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { createFileRoute, Link } from '@tanstack/react-router'
 import { useQuery } from '@tanstack/react-query'
 import { DataTable, type Column, type Pagination } from '@/components/data/DataTable'
-import { Box, Button, Card, IconButton, Stack, TextField, Tooltip, Typography } from '@mui/material'
+import { Button, Card, IconButton, Stack, TextField, Tooltip, Typography } from '@mui/material'
 import AddIcon from '@mui/icons-material/Add'
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutlined'
 import {
@@ -10,9 +10,9 @@ import {
   useDeleteTransaction,
 } from '@/features/transactions/transactions.queries'
 import { CreateTransactionDialog } from '@/features/transactions/components/CreateTransactionDialog'
+import { amountColumn, idColumn, postedColumn } from '@/features/transactions/transactions.columns'
 import { ErrorState } from '@/components/feedback/States'
 import { useIsRateLimited } from '@/components/feedback/RateLimitBanner'
-import { formatDateTime, formatMoney } from '@/lib/format'
 import type { Transaction } from '@/features/transactions/transactions.types'
 
 export const Route = createFileRoute('/transactions/')({ component: TransactionsPage })
@@ -35,7 +35,7 @@ function TransactionsPage() {
   )
 
   const columns: Column<Transaction>[] = [
-    { key: 'id', header: 'ID', width: 90 },
+    idColumn,
     {
       key: 'account_id',
       header: 'Account',
@@ -46,22 +46,8 @@ function TransactionsPage() {
         </Link>
       ),
     },
-    {
-      key: 'amount',
-      header: 'Amount',
-      width: 160,
-      align: 'right',
-      render: (row) => (
-        <Box component="span" sx={{ color: (row.amount ?? 0) < 0 ? 'error.main' : 'success.main' }}>
-          {formatMoney(row.amount)}
-        </Box>
-      ),
-    },
-    {
-      key: 'timestamp',
-      header: 'Posted',
-      format: (value: string) => formatDateTime(value),
-    },
+    amountColumn,
+    postedColumn,
     {
       key: 'actions',
       header: '',
