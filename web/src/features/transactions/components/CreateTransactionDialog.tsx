@@ -1,4 +1,4 @@
-import { Controller, useForm } from 'react-hook-form'
+import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import {
@@ -46,7 +46,7 @@ export function CreateTransactionDialog({
 }) {
   const createTransaction = useCreateTransaction()
 
-  const { control, handleSubmit, formState, reset } = useForm<FormValues>({
+  const { register, handleSubmit, formState, reset } = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: { account_id: accountId ? String(accountId) : '', amount: '' },
   })
@@ -73,36 +73,24 @@ export function CreateTransactionDialog({
           <Stack spacing={2} sx={{ pt: 1 }}>
             {createTransaction.isError && <ErrorState error={createTransaction.error} />}
 
-            <Controller
-              name="account_id"
-              control={control}
-              render={({ field }) => (
-                <TextField
-                  {...field}
-                  label="Account ID"
-                  type="number"
-                  fullWidth
-                  disabled={accountId !== undefined}
-                  error={Boolean(formState.errors.account_id)}
-                  helperText={formState.errors.account_id?.message}
-                />
-              )}
+            <TextField
+              label="Account ID"
+              type="number"
+              fullWidth
+              disabled={accountId !== undefined}
+              error={Boolean(formState.errors.account_id)}
+              helperText={formState.errors.account_id?.message}
+              {...register('account_id')}
             />
 
-            <Controller
-              name="amount"
-              control={control}
-              render={({ field }) => (
-                <TextField
-                  {...field}
-                  label="Amount"
-                  type="number"
-                  fullWidth
-                  slotProps={{ htmlInput: { step: '0.01' } }}
-                  error={Boolean(formState.errors.amount)}
-                  helperText={formState.errors.amount?.message}
-                />
-              )}
+            <TextField
+              label="Amount"
+              type="number"
+              fullWidth
+              slotProps={{ htmlInput: { step: '0.01' } }}
+              error={Boolean(formState.errors.amount)}
+              helperText={formState.errors.amount?.message}
+              {...register('amount')}
             />
 
             <Typography variant="caption" color="text.secondary">
