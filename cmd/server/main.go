@@ -33,8 +33,17 @@ func main() {
 }
 
 func run(args []string) error {
-	if len(args) > 0 && args[0] == "healthcheck" {
+	command := ""
+	if len(args) > 0 {
+		command = args[0]
+	}
+
+	switch command {
+	case "healthcheck":
 		return runHealthcheck()
+	case "", "serve", "reset", "seed":
+	default:
+		return fmt.Errorf("unknown command %q (want serve, seed, reset or healthcheck)", command)
 	}
 
 	// A missing .env is normal in a container, where configuration arrives as
@@ -53,17 +62,6 @@ func run(args []string) error {
 	ipMode, err := ops.ParseClientIPMode(cfg.ClientIPMode)
 	if err != nil {
 		return fmt.Errorf("invalid configuration: %w", err)
-	}
-
-	var command string
-	if len(args) > 0 {
-		command = args[0]
-	}
-
-	switch command {
-	case "", "serve", "reset", "seed":
-	default:
-		return fmt.Errorf("unknown command %q (want serve, seed, reset or healthcheck)", command)
 	}
 
 	log.Println("Running migrations")
@@ -122,16 +120,15 @@ func seedLedger(pool *pgxpool.Pool, fakeSeed uint64) error {
 }
 
 func serve(cfg *config.Config, ipMode ops.ClientIPMode, pool *pgxpool.Pool) error {
-	var err error
-
 	// The demo token authorizes the trusted X-Demo-Client-IP channel. Generated
 	// per process and never persisted, so only the in-process runner holds it.
 	demoToken := ""
 	if cfg.DemosEnabled {
-		demoToken, err = randomToken()
+		token, err := randomToken()
 		if err != nil {
 			return err
 		}
+		demoToken = token
 	}
 
 	limiter := ops.NewRateLimiter(cfg.RateLimit, cfg.RateWindow, cfg.RateBlockPeriod)
