@@ -200,26 +200,17 @@ func (a *API) deleteTransaction(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err := a.withTx(r.Context(), func(ctx context.Context, tx pgx.Tx) error {
-		cmdTag, err := tx.Exec(ctx, `
-			DELETE FROM transactions
-			WHERE id = $1
-		`, id)
-		if err != nil {
-			return err
-		}
-		if cmdTag.RowsAffected() == 0 {
-			return pgx.ErrNoRows
-		}
-		return nil
-	})
+	cmdTag, err := a.DB.Exec(r.Context(), `
+		DELETE FROM transactions WHERE id = $1
+	`, id)
 
 	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			httpx.WriteError(w, http.StatusNotFound, "transaction not found")
-		} else {
-			httpx.WriteServerError(w, r, "failed to delete transaction", err)
-		}
+		httpx.WriteServerError(w, r, "failed to delete transaction", err)
+		return
+	}
+
+	if cmdTag.RowsAffected() == 0 {
+		httpx.WriteError(w, http.StatusNotFound, "transaction not found")
 		return
 	}
 
