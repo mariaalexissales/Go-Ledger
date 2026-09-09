@@ -25,7 +25,6 @@ export const qk = {
     config: () => ['security', 'config'] as const,
   },
   demos: {
-    all: ['demos'] as const,
     list: () => ['demos', 'list'] as const,
   },
 } as const

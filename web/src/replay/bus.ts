@@ -15,8 +15,6 @@ const MS_PER_EVENT = 30
 interface Pacing {
   /** How long the run actually took on the server. */
   recordedMs: number
-  /** How long the replay took here. */
-  replayedMs: number
 }
 
 /**
@@ -54,7 +52,7 @@ class ReplayEventBus {
     this.cancel()
 
     if (events.length === 0) {
-      return Promise.resolve({ recordedMs: 0, replayedMs: 0 })
+      return Promise.resolve({ recordedMs: 0 })
     }
 
     const start = new Date(events[0].timestamp).getTime()
@@ -80,7 +78,7 @@ class ReplayEventBus {
             onEvent?.(event)
 
             if (i === events.length - 1) {
-              resolve({ recordedMs, replayedMs: Math.round(window) })
+              resolve({ recordedMs })
             }
           }, delay),
         )

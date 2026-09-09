@@ -33,7 +33,7 @@ export interface Column<T> {
    * Formats the raw cell value for this column's `key`. Ignored when `render`
    * is set, which takes the whole row instead.
    */
-  format?(value: unknown, row: T): ReactNode
+  format?(value: unknown): ReactNode
   render?: (row: T) => ReactNode
 }
 
@@ -46,7 +46,7 @@ interface DataTableProps<T> {
   onPaginationChange: (next: Pagination) => void
   pageSizeOptions?: number[]
   onRowClick?: (row: T) => void
-  emptyTitle?: string
+  emptyTitle: string
   emptyDescription?: string
   /** Floor before the container scrolls sideways instead of squashing. */
   minWidth?: number
@@ -60,7 +60,7 @@ function renderCell<T>(column: Column<T>, row: T): ReactNode {
   if (column.render) return column.render(row)
 
   const raw = (row as Record<string, unknown>)[column.key]
-  if (column.format) return column.format(raw, row)
+  if (column.format) return column.format(raw)
 
   return raw as ReactNode
 }
@@ -74,7 +74,7 @@ export function DataTable<T>({
   onPaginationChange,
   pageSizeOptions = [10, 25, 50, 100],
   onRowClick,
-  emptyTitle = 'Nothing to show',
+  emptyTitle,
   emptyDescription,
   minWidth,
   maxHeight,

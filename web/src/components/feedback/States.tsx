@@ -3,7 +3,7 @@ import { Link } from '@tanstack/react-router'
 import type { ReactNode } from 'react'
 import { ApiError } from '@/lib/http/errors'
 
-export function LoadingRows({ rows = 5 }: { rows?: number }) {
+export function LoadingRows({ rows }: { rows: number }) {
   return (
     <Stack spacing={1} sx={{ py: 1 }}>
       {Array.from({ length: rows }, (_, i) => (

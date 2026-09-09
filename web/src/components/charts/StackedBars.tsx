@@ -21,6 +21,7 @@ interface Serie {
 }
 
 const PAD = { top: 8, right: 8, bottom: 22, left: 36 }
+const HEIGHT = 260
 /** Past this the bars are narrower than the gaps between them and it is noise. */
 const MAX_BANDS = 200
 
@@ -51,12 +52,10 @@ function useWidth(ref: React.RefObject<HTMLDivElement | null>): number {
 export function StackedBars({
   bands,
   series,
-  height = 260,
   label,
 }: {
   bands: readonly Band[]
   series: readonly Serie[]
-  height?: number
   /** Accessible name. Required, since a bare SVG is invisible to screen readers. */
   label: string
 }) {
@@ -76,7 +75,7 @@ export function StackedBars({
   const max = niceMax(Math.max(0, ...totals))
 
   const plotW = Math.max(0, width - PAD.left - PAD.right)
-  const plotH = Math.max(0, height - PAD.top - PAD.bottom)
+  const plotH = Math.max(0, HEIGHT - PAD.top - PAD.bottom)
   const bandW = shown.length > 0 ? plotW / shown.length : 0
   const barW = Math.max(1, Math.min(bandW * 0.7, 28))
 
@@ -101,8 +100,8 @@ export function StackedBars({
         {width > 0 && (
           <svg
             width={width}
-            height={height}
-            viewBox={`0 0 ${width} ${height}`}
+            height={HEIGHT}
+            viewBox={`0 0 ${width} ${HEIGHT}`}
             role="img"
             aria-labelledby={`${id}-title ${id}-desc`}
             style={{ display: 'block', fontVariantNumeric: 'tabular-nums' }}
@@ -189,7 +188,7 @@ export function StackedBars({
                   {i % every === 0 && (
                     <text
                       x={cx}
-                      y={height - 6}
+                      y={HEIGHT - 6}
                       textAnchor="middle"
                       fontSize={10}
                       style={{ fill: 'var(--mui-palette-text-secondary)' }}
@@ -202,7 +201,7 @@ export function StackedBars({
             })}
           </svg>
         )}
-        {width === 0 && <Box sx={{ height }} />}
+        {width === 0 && <Box sx={{ height: HEIGHT }} />}
       </Box>
 
       <Stack direction="row" spacing={2} useFlexGap sx={{ flexWrap: 'wrap', mt: 1 }}>

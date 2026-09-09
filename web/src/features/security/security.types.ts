@@ -19,7 +19,7 @@ export interface EventListParams {
   action_type?: string
 }
 
-export interface LimiterPolicy {
+interface LimiterPolicy {
   limit: number
   window: string
   block_period: string

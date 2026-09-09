@@ -5,7 +5,7 @@ import type { DemoResult } from '@/features/demos/demos.types'
 import { loadFixture, loadIndex } from './fixtures'
 import { replayBus } from './bus'
 import { replayLedger } from './ledger'
-import { EVENTS_PAGE, LEDGER_PAGE, list, paginate } from './paging'
+import { EVENTS_PAGE, LEDGER_PAGE, paginate } from './paging'
 import { computeStats } from './stats'
 
 // Module state, not a store: replay is single-tab, single-run. `mode` starts
@@ -130,7 +130,7 @@ async function route(method: string, path: string, query: Params, body: unknown)
 
   if (path === '/ops/demos' && method === 'GET') {
     const index = await loadIndex()
-    return list(index.demos, index.demos.length, index.demos.length, 0)
+    return { data: index.demos, total: index.demos.length, limit: index.demos.length, offset: 0 }
   }
 
   const demoRun = /^\/ops\/demos\/([\w-]+)\/run$/.exec(path)

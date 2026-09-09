@@ -9,11 +9,11 @@ import { EmptyState } from '@/components/feedback/States'
  */
 export function EventFeed({
   events,
-  height = 420,
+  height,
   emptyHint,
 }: {
   events: SecurityEvent[]
-  height?: number | string
+  height: number | string
   emptyHint?: string
 }) {
   if (events.length === 0) {
