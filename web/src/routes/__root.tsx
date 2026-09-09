@@ -5,7 +5,6 @@ import {
   Chip,
   Container,
   IconButton,
-  Stack,
   Tab,
   Tabs,
   Toolbar,
@@ -42,11 +41,10 @@ function RootLayout() {
 function AppShell() {
   const pathname = useRouterState({ select: (s) => s.location.pathname })
 
-  // Longest matching prefix, so /accounts/3 still highlights Accounts.
+  // Prefix match, so /accounts/3 still highlights Accounts.
   const active =
-    NAV.filter((item) => (item.to === '/' ? pathname === '/' : pathname.startsWith(item.to))).sort(
-      (a, b) => b.to.length - a.to.length,
-    )[0]?.to ?? '/'
+    NAV.find((item) => (item.to === '/' ? pathname === '/' : pathname.startsWith(item.to)))?.to ??
+    '/'
 
   return (
     // No background here on purpose. The page ground, texture and radial
@@ -115,13 +113,11 @@ function ThemeToggle() {
   const { mode, setMode } = useColorScheme()
 
   return (
-    <Stack direction="row">
-      <IconButton
-        onClick={() => setMode(mode === 'dark' ? 'light' : 'dark')}
-        aria-label="Toggle color scheme"
-      >
-        {mode === 'dark' ? <LightModeIcon /> : <DarkModeIcon />}
-      </IconButton>
-    </Stack>
+    <IconButton
+      onClick={() => setMode(mode === 'dark' ? 'light' : 'dark')}
+      aria-label="Toggle color scheme"
+    >
+      {mode === 'dark' ? <LightModeIcon /> : <DarkModeIcon />}
+    </IconButton>
   )
 }
