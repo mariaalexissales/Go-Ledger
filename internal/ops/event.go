@@ -5,7 +5,6 @@ import (
 	"time"
 )
 
-// Flag values recorded against every request the security guard sees.
 const (
 	FlagAllowed = "ALLOWED"
 	FlagBlocked = "BLOCKED"
@@ -19,9 +18,6 @@ type SecurityEvent struct {
 	FlagStatus string
 }
 
-// EventDTO is the wire shape. The database stores action_type as a single
-// "GET /api/accounts" string; splitting it here saves every client from doing
-// the same parsing, without changing the schema.
 type EventDTO struct {
 	ID         int64     `json:"id"`
 	Timestamp  time.Time `json:"timestamp"`

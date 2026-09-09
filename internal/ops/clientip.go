@@ -8,20 +8,14 @@ import (
 	"sync"
 )
 
-// ClientIPMode controls how the guard decides who a request came from. The
-// choice is the whole ballgame for an IP-based rate limiter, so it is a
-// first-class, runtime-switchable setting rather than a hardcoded rule.
 type ClientIPMode string
 
+// ModeTrustXFF is deliberately vulnerable: it returns X-Forwarded-For verbatim,
+// so any client can invent a source IP per request and never accumulate a rate.
+// See SECURITY.md before lifting this anywhere real.
 const (
-	// ModeTrustXFF returns the X-Forwarded-For header verbatim. This is the
-	// original behavior and it is deliberately vulnerable: any client can
-	// invent a new source IP per request and never accumulate a rate. The
-	// xff-spoof demo exists to show exactly this.
 	ModeTrustXFF ClientIPMode = "xff-trust-all"
 
-	// ModeRemoteAddr ignores forwarding headers entirely and uses the socket
-	// peer. Correct when nothing is proxying in front of the server.
 	ModeRemoteAddr ClientIPMode = "remote-addr"
 )
 
@@ -36,20 +30,15 @@ func ParseClientIPMode(s string) (ClientIPMode, error) {
 	}
 }
 
-// Headers used by the demo runner's trusted identity channel.
 const (
 	HeaderDemoClientIP = "X-Demo-Client-IP"
 	HeaderDemoToken    = "X-Demo-Token"
 )
 
-// Resolver maps a request to the IP the security guard should attribute it to.
 type Resolver struct {
 	mu   sync.RWMutex
 	mode ClientIPMode
 
-	// demoToken authorizes the X-Demo-Client-IP channel. It is generated in
-	// memory at startup and never persisted, so only the in-process demo runner
-	// can present it. Empty disables the channel entirely.
 	demoToken string
 }
 
@@ -69,12 +58,6 @@ func (r *Resolver) SetMode(mode ClientIPMode) {
 	r.mode = mode
 }
 
-// ClientIP resolves the source identity for a request.
-//
-// The demo channel is checked first and is independent of the mode. That
-// separation is the point: scenarios that need synthetic source IPs keep
-// working after the X-Forwarded-For hole is closed, so the same scenario can be
-// run in both modes and compared. Only the spoof scenario uses raw XFF.
 func (r *Resolver) ClientIP(req *http.Request) string {
 	r.mu.RLock()
 	mode, token := r.mode, r.demoToken
@@ -93,8 +76,6 @@ func (r *Resolver) ClientIP(req *http.Request) string {
 	return remoteHost(req)
 }
 
-// demoClientIP honors the trusted identity header only for a loopback caller
-// presenting the in-process token.
 func demoClientIP(req *http.Request, token string) string {
 	if token == "" {
 		return ""
@@ -117,7 +98,6 @@ func demoClientIP(req *http.Request, token string) string {
 	return claimed
 }
 
-// remoteHost strips the port from RemoteAddr.
 func remoteHost(req *http.Request) string {
 	host, _, err := net.SplitHostPort(req.RemoteAddr)
 	if err != nil {

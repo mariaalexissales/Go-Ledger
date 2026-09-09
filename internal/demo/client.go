@@ -11,33 +11,19 @@ import (
 	"go-ledger/internal/ops"
 )
 
-// maxRequestsPerRun bounds a scenario so a bug (or an over-enthusiastic new
-// scenario) cannot turn the demo endpoint into a load generator.
 const maxRequestsPerRun = 400
 
-// ErrBudgetExhausted is returned once a scenario hits maxRequestsPerRun.
 var ErrBudgetExhausted = errors.New("demo: request budget exhausted")
 
-// Identity is how a scenario claims a source IP.
 type Identity struct {
-	IP string
-	// Spoofed sends the IP as a raw X-Forwarded-For header. That is the
-	// untrusted path, which the guard believes or ignores depending on the
-	// client IP mode.
+	IP      string
 	Spoofed bool
 }
 
-// As claims an IP over the trusted demo channel. The guard honors it in every
-// client IP mode, so scenarios using As behave identically before and after the
-// X-Forwarded-For hole is closed. Use this for everything except the spoof demo.
 func As(ip string) Identity { return Identity{IP: ip} }
 
-// Spoof claims an IP the way an attacker would: by asserting X-Forwarded-For and
-// hoping the server believes it.
 func Spoof(ip string) Identity { return Identity{IP: ip, Spoofed: true} }
 
-// Client is the handle a scenario uses to generate traffic. It records every
-// request as a Step.
 type Client struct {
 	baseURL string
 	token   string
@@ -56,8 +42,6 @@ func newClient(baseURL, token string, policy ops.Policy) *Client {
 		policy:  policy,
 		http: &http.Client{
 			Timeout: 5 * time.Second,
-			// Each demo request is its own logical client, so connection reuse
-			// is fine but redirects are not.
 			CheckRedirect: func(*http.Request, []*http.Request) error {
 				return http.ErrUseLastResponse
 			},
@@ -67,13 +51,10 @@ func newClient(baseURL, token string, policy ops.Policy) *Client {
 	}
 }
 
-// Policy exposes the guard's live rate-limit settings so scenarios can scale
-// their request counts and stay meaningful at any configured limit.
 func (c *Client) Policy() ops.Policy { return c.policy }
 
 func (c *Client) Steps() []Step { return c.steps }
 
-// Note records an annotation in the timeline without making a request.
 func (c *Client) Note(text string) {
 	c.steps = append(c.steps, Step{
 		Seq:       len(c.steps) + 1,
@@ -82,7 +63,6 @@ func (c *Client) Note(text string) {
 	})
 }
 
-// Sleep pauses, respecting cancellation.
 func (c *Client) Sleep(ctx context.Context, d time.Duration) error {
 	timer := time.NewTimer(d)
 	defer timer.Stop()
@@ -153,8 +133,6 @@ func (c *Client) record(step Step, err error) (Step, error) {
 
 	c.steps = append(c.steps, step)
 
-	// A transport hiccup on one request should not abort the scenario. It is
-	// recorded and the run continues. Cancellation must stop it immediately.
 	if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
 		return step, err
 	}

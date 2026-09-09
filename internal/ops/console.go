@@ -18,18 +18,11 @@ const (
 	eventsMaxLimit     = 500
 )
 
-// Console is the observability plane: the read side of the security logger,
-// plus the controls that make it demonstrable.
-//
-// It is deliberately not wrapped in SecurityLogger: the guard protects the
-// ledger, and the console is the instrument watching it.
 type Console struct {
 	db    *pgxpool.Pool
 	hub   *Hub
 	guard *SecurityGuard
 
-	// mutable enables the controls that change guard behavior at runtime. Off
-	// outside demo mode.
 	mutable bool
 }
 
@@ -37,8 +30,6 @@ func NewConsole(db *pgxpool.Pool, hub *Hub, guard *SecurityGuard, mutable bool) 
 	return &Console{db: db, hub: hub, guard: guard, mutable: mutable}
 }
 
-// Mount registers the console's routes onto an existing router, so the caller
-// can attach other handlers (the demo runner) to the same mount point.
 func (c *Console) Mount(r chi.Router) {
 	r.Get("/config", c.getConfig)
 	r.Get("/events", c.listEvents)
@@ -53,10 +44,8 @@ func (c *Console) Mount(r chi.Router) {
 }
 
 type configResponse struct {
-	ClientIPMode string `json:"client_ip_mode"`
-	RateLimit    Policy `json:"rate_limit"`
-	// YourIP is how the guard would identify the caller right now. It makes the
-	// whole IP-attribution story legible at a glance.
+	ClientIPMode  string `json:"client_ip_mode"`
+	RateLimit     Policy `json:"rate_limit"`
 	YourIP        string `json:"your_ip"`
 	RemoteAddr    string `json:"remote_addr"`
 	Mutable       bool   `json:"mutable"`
@@ -93,8 +82,6 @@ func (c *Console) setClientIPMode(w http.ResponseWriter, r *http.Request) {
 	}
 
 	c.guard.Resolver().SetMode(mode)
-	// Identity just changed meaning, so previously accumulated per-IP state is
-	// no longer comparable.
 	c.guard.Limiter().Reset()
 
 	c.getConfig(w, r)
@@ -132,8 +119,6 @@ func (c *Console) setLimiterPolicy(w http.ResponseWriter, r *http.Request) {
 }
 
 func (c *Console) resetEvents(w http.ResponseWriter, r *http.Request) {
-	// seed.Reset deliberately leaves security_events alone, so clearing the
-	// audit trail for a fresh demo needs its own path.
 	if _, err := c.db.Exec(r.Context(), "TRUNCATE security_events RESTART IDENTITY"); err != nil {
 		httpx.WriteServerError(w, r, "failed to reset security events", err)
 		return
@@ -146,12 +131,8 @@ func (c *Console) resetEvents(w http.ResponseWriter, r *http.Request) {
 func (c *Console) listEvents(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 
-	// Looser than the ledger endpoints: the event feed is read by a dashboard
-	// pulling a whole run at once, not by a human clicking through pages.
 	page := httpx.ParsePage(r, eventsDefaultLimit, eventsMaxLimit)
 
-	// ip_address accepts a comma-separated set so the demos page can scope the
-	// feed to just the IPs a run used.
 	ips := parseIPFilter(q)
 
 	var since *time.Time
@@ -231,7 +212,6 @@ func (c *Console) getStats(w http.ResponseWriter, r *http.Request) {
 		BlockedNow: []blockedIP{},
 	}
 
-	// Totals and distinct IP count in one pass.
 	var allowed, blocked int
 	err := c.db.QueryRow(r.Context(), `
 		SELECT
@@ -271,8 +251,6 @@ func (c *Console) getStats(w http.ResponseWriter, r *http.Request) {
 		resp.TopIPs = topIPs
 	}
 
-	// generate_series produces a row per bucket, so quiet minutes appear as
-	// explicit zeros instead of gaps the chart would interpolate across.
 	buckets, err := db.Collect(r.Context(), c.db, `
 		SELECT g.bucket,
 		       COUNT(e.id) FILTER (WHERE e.flag_status = $3) AS allowed,

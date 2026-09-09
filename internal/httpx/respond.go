@@ -1,6 +1,4 @@
-// Package httpx holds the response helpers shared by the API and the ops
-// layers. It exists so both can emit the same JSON error envelope without
-// internal/ops having to import internal/api (which imports ops already).
+// Package httpx holds the JSON response helpers shared by the api and ops layers.
 package httpx
 
 import (
@@ -35,8 +33,6 @@ func WriteServerError(w http.ResponseWriter, r *http.Request, msg string, err er
 	WriteError(w, http.StatusInternalServerError, msg)
 }
 
-// ListResponse is the envelope every collection endpoint returns, so clients
-// have one shape to parse and always know the full result count.
 type ListResponse[T any] struct {
 	Data   []T `json:"data"`
 	Total  int `json:"total"`
@@ -45,7 +41,6 @@ type ListResponse[T any] struct {
 }
 
 func WriteList[T any](w http.ResponseWriter, items []T, total, limit, offset int) {
-	// Encode an empty collection as [] rather than null.
 	if items == nil {
 		items = []T{}
 	}

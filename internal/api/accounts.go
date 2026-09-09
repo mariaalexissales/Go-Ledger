@@ -11,13 +11,10 @@ import (
 	"go-ledger/internal/httpx"
 )
 
-// GET: List accounts /accounts?limit=&offset=&q=
 func (a *API) listAccounts(w http.ResponseWriter, r *http.Request) {
 	page := parsePageParams(r)
 	search := r.URL.Query().Get("q")
 
-	// COUNT(*) OVER() returns the unpaginated total alongside each row, which
-	// avoids a second round trip just to fill in the envelope.
 	total := 0
 
 	accounts, err := db.Collect(r.Context(), a.DB, `
@@ -40,7 +37,6 @@ func (a *API) listAccounts(w http.ResponseWriter, r *http.Request) {
 	httpx.WriteListPage(w, accounts, total, page)
 }
 
-// POST: Create Accounts
 func (a *API) createAccount(w http.ResponseWriter, r *http.Request) {
 	var req createAccountRequest
 
@@ -69,7 +65,6 @@ func (a *API) createAccount(w http.ResponseWriter, r *http.Request) {
 	httpx.WriteJSON(w, http.StatusCreated, acc)
 }
 
-// GET: Get Account /{id}
 func (a *API) getAccount(w http.ResponseWriter, r *http.Request) {
 	id, ok := pathIntParam(w, r, "account")
 	if !ok {
@@ -96,7 +91,6 @@ func (a *API) getAccount(w http.ResponseWriter, r *http.Request) {
 	httpx.WriteJSON(w, http.StatusOK, acc)
 }
 
-// DELETE: Delete Account /{id}
 func (a *API) deleteAccount(w http.ResponseWriter, r *http.Request) {
 	id, ok := pathIntParam(w, r, "account")
 	if !ok {

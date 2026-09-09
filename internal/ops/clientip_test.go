@@ -108,8 +108,6 @@ func TestResolverClientIP(t *testing.T) {
 	}
 }
 
-// An empty token must disable the demo channel entirely, so a build with demos
-// off cannot have identities asserted at it.
 func TestResolverDemoChannelDisabledWithoutToken(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/api/accounts/1", nil)
 	req.RemoteAddr = "127.0.0.1:54321"

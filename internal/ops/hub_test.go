@@ -84,7 +84,7 @@ func TestHubCloseIsIdempotent(t *testing.T) {
 	sub := hub.Subscribe()
 
 	sub.Close()
-	sub.Close() // Must not panic by closing an already-closed channel.
+	sub.Close()
 }
 
 func TestHubConcurrentPublishAndSubscribe(t *testing.T) {

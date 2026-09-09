@@ -7,9 +7,6 @@ import (
 	"io/fs"
 )
 
-// The `all:` prefix is required or files Vite emits with a leading dot are
-// skipped. dist/ is produced by `npm run build` in web/ and is gitignored.
-//
 //go:embed all:dist
 var distFS embed.FS
 

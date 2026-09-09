@@ -36,11 +36,6 @@ func (a *API) withTx(ctx context.Context, fn func(ctx context.Context, tx pgx.Tx
 	return nil
 }
 
-// validateCreateTransaction rejects bodies the database would reject anyway,
-// but with a 400 instead of a 500. An absent or null amount leaves the
-// pgtype.Numeric zero-valued, which pgx encodes as NULL against a NOT NULL
-// column, and that surfaces as an opaque server error rather than a message
-// the caller can act on.
 func validateCreateTransaction(req createTransactionRequest) (string, bool) {
 	switch {
 	case req.AccountID < 1:
@@ -51,10 +46,6 @@ func validateCreateTransaction(req createTransactionRequest) (string, bool) {
 		return "amount must be a number", false
 	case req.Amount.InfinityModifier != pgtype.Finite:
 		return "amount must be finite", false
-	// Not a database constraint: NUMERIC(15,2) accepts zero happily. This is
-	// here so the API agrees with the console's own form, which already refuses
-	// it (see CreateTransactionDialog). Drop this case if a zero-amount
-	// transaction ever becomes meaningful.
 	case req.Amount.Int != nil && req.Amount.Int.Sign() == 0:
 		return "amount cannot be zero", false
 	}
@@ -62,12 +53,10 @@ func validateCreateTransaction(req createTransactionRequest) (string, bool) {
 	return "", true
 }
 
-// GET: List transactions /transactions?limit=&offset=&account_id=
 func (a *API) listTransactions(w http.ResponseWriter, r *http.Request) {
 	a.writeTransactionPage(w, r, optionalIntParam(r, "account_id"))
 }
 
-// GET: List one account's transactions /accounts/{id}/transactions
 func (a *API) listAccountTransactions(w http.ResponseWriter, r *http.Request) {
 	id, ok := pathIntParam(w, r, "account")
 	if !ok {
@@ -77,8 +66,6 @@ func (a *API) listAccountTransactions(w http.ResponseWriter, r *http.Request) {
 	a.writeTransactionPage(w, r, &id)
 }
 
-// writeTransactionPage backs both transaction list endpoints. A nil accountID
-// means "no filter".
 func (a *API) writeTransactionPage(w http.ResponseWriter, r *http.Request, accountID *int) {
 	page := parsePageParams(r)
 
@@ -104,7 +91,6 @@ func (a *API) writeTransactionPage(w http.ResponseWriter, r *http.Request, accou
 	httpx.WriteListPage(w, transactions, total, page)
 }
 
-// POST /transactions.
 func (a *API) createTransaction(w http.ResponseWriter, r *http.Request) {
 	var req createTransactionRequest
 	if !httpx.DecodeJSON(w, r, &req) {
@@ -146,10 +132,6 @@ func (a *API) createTransaction(w http.ResponseWriter, r *http.Request) {
 		return nil
 	})
 	if err != nil {
-		// A bad account_id trips the transactions.account_id foreign key on the
-		// INSERT, before the balance UPDATE ever runs, so the FK violation is
-		// the path that actually fires. The RowsAffected check above is the
-		// backstop if the constraint is ever relaxed.
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) && pgErr.Code == pgerrcode.ForeignKeyViolation {
 			err = errAccountNotFound
@@ -166,7 +148,6 @@ func (a *API) createTransaction(w http.ResponseWriter, r *http.Request) {
 	httpx.WriteJSON(w, http.StatusCreated, txn)
 }
 
-// GET /transactions/{id}.
 func (a *API) getTransaction(w http.ResponseWriter, r *http.Request) {
 	id, ok := pathIntParam(w, r, "transaction")
 	if !ok {
@@ -193,7 +174,6 @@ func (a *API) getTransaction(w http.ResponseWriter, r *http.Request) {
 	httpx.WriteJSON(w, http.StatusOK, txn)
 }
 
-// DELETE /transactions/{id}.
 func (a *API) deleteTransaction(w http.ResponseWriter, r *http.Request) {
 	id, ok := pathIntParam(w, r, "transaction")
 	if !ok {

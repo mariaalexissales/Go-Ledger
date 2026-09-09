@@ -16,8 +16,6 @@ func Reset(ctx context.Context, pool *pgxpool.Pool) error {
 	return nil
 }
 
-// Run fills an empty database with fake accounts and transactions. It is a no-op
-// when any account already exists.
 func Run(ctx context.Context, pool *pgxpool.Pool, fakeSeed uint64) error {
 	if fakeSeed != 0 {
 		gofakeit.GlobalFaker = gofakeit.New(fakeSeed)

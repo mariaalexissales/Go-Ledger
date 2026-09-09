@@ -5,15 +5,8 @@ import (
 	"sync/atomic"
 )
 
-// subscriberBuffer is how far behind a single SSE client may fall before its
-// events start being dropped.
 const subscriberBuffer = 256
 
-// Hub fans security events out to live subscribers (the SSE stream).
-//
-// Publish never blocks. A browser tab that stops reading must not be able to
-// stall the request path, so a full subscriber buffer drops the event and
-// increments that subscriber's counter instead of applying backpressure.
 type Hub struct {
 	mu   sync.RWMutex
 	subs map[int64]*subscriber
@@ -29,9 +22,6 @@ func NewHub() *Hub {
 	return &Hub{subs: make(map[int64]*subscriber)}
 }
 
-// Subscription is a live feed of security events. Dropped reports how many
-// events were discarded because the consumer fell behind, so the UI can say so
-// rather than silently showing an incomplete picture.
 type Subscription struct {
 	hub *Hub
 	id  int64

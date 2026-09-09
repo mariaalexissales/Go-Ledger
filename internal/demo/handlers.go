@@ -9,8 +9,6 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
-// Handler exposes the scenario list and runner over HTTP. It is mounted only
-// when demos are enabled.
 type Handler struct {
 	runner *Runner
 }
