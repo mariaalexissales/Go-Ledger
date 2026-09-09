@@ -26,8 +26,8 @@ func (a *API) listAccounts(w http.ResponseWriter, r *http.Request) {
 		WHERE ($1 = '' OR name ILIKE '%' || $1 || '%')
 		ORDER BY id
 		LIMIT $2 OFFSET $3
-	`, func(row pgx.CollectableRow) (Account, error) {
-		var acc Account
+	`, func(row pgx.CollectableRow) (account, error) {
+		var acc account
 		err := row.Scan(&acc.ID, &acc.Name, &acc.Balance, &acc.CreatedAt, &total)
 		return acc, err
 	}, search, page.Limit, page.Offset)
@@ -42,7 +42,7 @@ func (a *API) listAccounts(w http.ResponseWriter, r *http.Request) {
 
 // POST: Create Accounts
 func (a *API) createAccount(w http.ResponseWriter, r *http.Request) {
-	var req CreateAccountRequest
+	var req createAccountRequest
 
 	if !httpx.DecodeJSON(w, r, &req) {
 		return
@@ -53,7 +53,7 @@ func (a *API) createAccount(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var acc Account
+	var acc account
 
 	err := a.DB.QueryRow(r.Context(), `
 		INSERT INTO accounts (name)
@@ -76,7 +76,7 @@ func (a *API) getAccount(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var acc Account
+	var acc account
 
 	err := a.DB.QueryRow(r.Context(), `
 		SELECT id, name, balance, created_at

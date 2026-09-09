@@ -29,7 +29,7 @@ func TestValidateCreateTransaction(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			var req CreateTransactionRequest
+			var req createTransactionRequest
 			if err := json.Unmarshal([]byte(tt.body), &req); err != nil {
 				t.Fatalf("decoding %s: %v", tt.body, err)
 			}

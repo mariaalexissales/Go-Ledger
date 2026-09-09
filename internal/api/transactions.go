@@ -41,7 +41,7 @@ func (a *API) withTx(ctx context.Context, fn func(ctx context.Context, tx pgx.Tx
 // pgtype.Numeric zero-valued, which pgx encodes as NULL against a NOT NULL
 // column, and that surfaces as an opaque server error rather than a message
 // the caller can act on.
-func validateCreateTransaction(req CreateTransactionRequest) (string, bool) {
+func validateCreateTransaction(req createTransactionRequest) (string, bool) {
 	switch {
 	case req.AccountID < 1:
 		return "account_id must be a positive integer", false
@@ -90,8 +90,8 @@ func (a *API) writeTransactionPage(w http.ResponseWriter, r *http.Request, accou
 		WHERE ($1::int IS NULL OR account_id = $1::int)
 		ORDER BY timestamp DESC, id DESC
 		LIMIT $2 OFFSET $3
-	`, func(row pgx.CollectableRow) (Transaction, error) {
-		var txn Transaction
+	`, func(row pgx.CollectableRow) (transaction, error) {
+		var txn transaction
 		err := row.Scan(&txn.ID, &txn.AccountID, &txn.Amount, &txn.Timestamp, &total)
 		return txn, err
 	}, accountID, page.Limit, page.Offset)
@@ -106,7 +106,7 @@ func (a *API) writeTransactionPage(w http.ResponseWriter, r *http.Request, accou
 
 // POST /transactions.
 func (a *API) createTransaction(w http.ResponseWriter, r *http.Request) {
-	var req CreateTransactionRequest
+	var req createTransactionRequest
 	if !httpx.DecodeJSON(w, r, &req) {
 		return
 	}
@@ -116,7 +116,7 @@ func (a *API) createTransaction(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var txn Transaction
+	var txn transaction
 
 	err := a.withTx(r.Context(), func(ctx context.Context, tx pgx.Tx) error {
 		err := tx.QueryRow(ctx, `
@@ -173,7 +173,7 @@ func (a *API) getTransaction(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var txn Transaction
+	var txn transaction
 
 	err := a.DB.QueryRow(r.Context(), `
 		SELECT id, account_id, amount, timestamp
