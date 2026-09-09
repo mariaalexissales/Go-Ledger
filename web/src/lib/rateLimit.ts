@@ -56,3 +56,9 @@ export const rateLimitStore = new RateLimitStore()
 export function useRateLimit() {
   return useSyncExternalStore(rateLimitStore.subscribe, rateLimitStore.getSnapshot)
 }
+
+/** True while a block is active; used to disable mutation buttons. */
+export function useIsRateLimited(): boolean {
+  const { until } = useRateLimit()
+  return Boolean(until && until > Date.now())
+}

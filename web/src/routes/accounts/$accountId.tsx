@@ -18,7 +18,7 @@ import { accountsQueries } from '@/features/accounts/accounts.queries'
 import { CreateTransactionDialog } from '@/features/transactions/components/CreateTransactionDialog'
 import { amountColumn, idColumn, postedColumn } from '@/features/transactions/transactions.columns'
 import { ErrorState, LoadingRows } from '@/components/feedback/States'
-import { useIsRateLimited } from '@/components/feedback/RateLimitBanner'
+import { useIsRateLimited } from '@/lib/rateLimit'
 import { formatDateTime, formatMoney } from '@/lib/format'
 import type { Transaction } from '@/features/transactions/transactions.types'
 

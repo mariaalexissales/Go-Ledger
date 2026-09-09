@@ -8,7 +8,7 @@ import DeleteOutlineIcon from '@mui/icons-material/DeleteOutlined'
 import { accountsQueries, useDeleteAccount } from '@/features/accounts/accounts.queries'
 import { CreateAccountDialog } from '@/features/accounts/components/CreateAccountDialog'
 import { ErrorState } from '@/components/feedback/States'
-import { useIsRateLimited } from '@/components/feedback/RateLimitBanner'
+import { useIsRateLimited } from '@/lib/rateLimit'
 import { formatDateTime, formatMoney } from '@/lib/format'
 import type { Account } from '@/features/accounts/accounts.types'
 

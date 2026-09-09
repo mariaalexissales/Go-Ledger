@@ -12,7 +12,7 @@ import {
 import { CreateTransactionDialog } from '@/features/transactions/components/CreateTransactionDialog'
 import { amountColumn, idColumn, postedColumn } from '@/features/transactions/transactions.columns'
 import { ErrorState } from '@/components/feedback/States'
-import { useIsRateLimited } from '@/components/feedback/RateLimitBanner'
+import { useIsRateLimited } from '@/lib/rateLimit'
 import type { Transaction } from '@/features/transactions/transactions.types'
 
 export const Route = createFileRoute('/transactions/')({ component: TransactionsPage })
