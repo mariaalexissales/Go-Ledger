@@ -90,7 +90,7 @@ func (r *Resolver) ClientIP(req *http.Request) string {
 		}
 	}
 
-	return RemoteHost(req)
+	return remoteHost(req)
 }
 
 // demoClientIP honors the trusted identity header only for a loopback caller
@@ -110,15 +110,15 @@ func demoClientIP(req *http.Request, token string) string {
 		return ""
 	}
 
-	if ip := net.ParseIP(RemoteHost(req)); ip == nil || !ip.IsLoopback() {
+	if ip := net.ParseIP(remoteHost(req)); ip == nil || !ip.IsLoopback() {
 		return ""
 	}
 
 	return claimed
 }
 
-// RemoteHost strips the port from RemoteAddr.
-func RemoteHost(req *http.Request) string {
+// remoteHost strips the port from RemoteAddr.
+func remoteHost(req *http.Request) string {
 	host, _, err := net.SplitHostPort(req.RemoteAddr)
 	if err != nil {
 		return req.RemoteAddr

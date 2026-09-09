@@ -70,7 +70,7 @@ func (c *Console) getConfig(w http.ResponseWriter, r *http.Request) {
 		ClientIPMode:  string(c.guard.Resolver().Mode()),
 		RateLimit:     c.guard.Limiter().Policy(),
 		YourIP:        c.guard.Resolver().ClientIP(r),
-		RemoteAddr:    RemoteHost(r),
+		RemoteAddr:    remoteHost(r),
 		Mutable:       c.mutable,
 		Subscribers:   c.hub.SubscriberCount(),
 		DroppedEvents: c.guard.Recorder().Dropped(),
