@@ -1,20 +1,11 @@
 import { useSyncExternalStore } from 'react'
 
 interface RateLimitState {
-  /** Unix ms when the block lifts, or null when not limited. */
   until: number | null
 }
 
 type Listener = () => void
 
-/**
- * A tiny external store rather than context, so the fetch client can write to it
- * without being inside the React tree.
- *
- * Worth knowing: the server re-blocks on every request received during a block,
- * which extends it. That is why mutation buttons are disabled while this is
- * active instead of just showing a message.
- */
 class RateLimitStore {
   private state: RateLimitState = { until: null }
   private listeners = new Set<Listener>()
@@ -55,4 +46,9 @@ export const rateLimitStore = new RateLimitStore()
 
 export function useRateLimit() {
   return useSyncExternalStore(rateLimitStore.subscribe, rateLimitStore.getSnapshot)
+}
+
+export function useIsRateLimited(): boolean {
+  const { until } = useRateLimit()
+  return Boolean(until && until > Date.now())
 }

@@ -1,7 +1,6 @@
 package demo
 
 import (
-	"context"
 	"errors"
 	"net/http"
 
@@ -10,8 +9,6 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
-// Handler exposes the scenario list and runner over HTTP. It is mounted only
-// when demos are enabled.
 type Handler struct {
 	runner *Runner
 }
@@ -39,12 +36,9 @@ func (h *Handler) run(w http.ResponseWriter, r *http.Request) {
 
 	result, err := h.runner.Run(r.Context(), id)
 	if err != nil {
-		switch {
-		case errors.Is(err, ErrAlreadyRunning):
+		if errors.Is(err, ErrAlreadyRunning) {
 			httpx.WriteError(w, http.StatusConflict, err.Error())
-		case errors.Is(err, context.Canceled):
-			// The client went away mid-run; nothing to report to.
-		default:
+		} else {
 			httpx.WriteError(w, http.StatusNotFound, err.Error())
 		}
 		return

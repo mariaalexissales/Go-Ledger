@@ -3,23 +3,18 @@ package api
 import (
 	"errors"
 	"net/http"
-	"strconv"
 	"strings"
 
-	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5"
 
 	"go-ledger/internal/db"
 	"go-ledger/internal/httpx"
 )
 
-// GET: List accounts /accounts?limit=&offset=&q=
 func (a *API) listAccounts(w http.ResponseWriter, r *http.Request) {
 	page := parsePageParams(r)
 	search := r.URL.Query().Get("q")
 
-	// COUNT(*) OVER() returns the unpaginated total alongside each row, which
-	// avoids a second round trip just to fill in the envelope.
 	total := 0
 
 	accounts, err := db.Collect(r.Context(), a.DB, `
@@ -28,8 +23,8 @@ func (a *API) listAccounts(w http.ResponseWriter, r *http.Request) {
 		WHERE ($1 = '' OR name ILIKE '%' || $1 || '%')
 		ORDER BY id
 		LIMIT $2 OFFSET $3
-	`, func(row pgx.CollectableRow) (Account, error) {
-		var acc Account
+	`, func(row pgx.CollectableRow) (account, error) {
+		var acc account
 		err := row.Scan(&acc.ID, &acc.Name, &acc.Balance, &acc.CreatedAt, &total)
 		return acc, err
 	}, search, page.Limit, page.Offset)
@@ -42,9 +37,8 @@ func (a *API) listAccounts(w http.ResponseWriter, r *http.Request) {
 	httpx.WriteListPage(w, accounts, total, page)
 }
 
-// POST: Create Accounts
 func (a *API) createAccount(w http.ResponseWriter, r *http.Request) {
-	var req CreateAccountRequest
+	var req createAccountRequest
 
 	if !httpx.DecodeJSON(w, r, &req) {
 		return
@@ -55,7 +49,7 @@ func (a *API) createAccount(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var acc Account
+	var acc account
 
 	err := a.DB.QueryRow(r.Context(), `
 		INSERT INTO accounts (name)
@@ -71,18 +65,15 @@ func (a *API) createAccount(w http.ResponseWriter, r *http.Request) {
 	httpx.WriteJSON(w, http.StatusCreated, acc)
 }
 
-// GET: Get Account /{id}
 func (a *API) getAccount(w http.ResponseWriter, r *http.Request) {
-	id, err := strconv.Atoi(chi.URLParam(r, "id"))
-
-	if err != nil {
-		httpx.WriteError(w, http.StatusBadRequest, "invalid account id")
+	id, ok := pathIntParam(w, r, "account")
+	if !ok {
 		return
 	}
 
-	var acc Account
+	var acc account
 
-	err = a.DB.QueryRow(r.Context(), `
+	err := a.DB.QueryRow(r.Context(), `
 		SELECT id, name, balance, created_at
 		FROM accounts
 		WHERE id = $1
@@ -100,12 +91,9 @@ func (a *API) getAccount(w http.ResponseWriter, r *http.Request) {
 	httpx.WriteJSON(w, http.StatusOK, acc)
 }
 
-// DELETE: Delete Account /{id}
 func (a *API) deleteAccount(w http.ResponseWriter, r *http.Request) {
-	id, err := strconv.Atoi(chi.URLParam(r, "id"))
-
-	if err != nil {
-		httpx.WriteError(w, http.StatusBadRequest, "invalid account id")
+	id, ok := pathIntParam(w, r, "account")
+	if !ok {
 		return
 	}
 

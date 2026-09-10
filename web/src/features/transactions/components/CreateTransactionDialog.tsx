@@ -1,4 +1,4 @@
-import { Controller, useForm } from 'react-hook-form'
+import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import {
@@ -14,13 +14,6 @@ import {
 import { useCreateTransaction } from '../transactions.queries'
 import { ErrorState } from '@/components/feedback/States'
 
-/**
- * The form holds strings (that is what an <input> gives you) and converts on
- * submit. The conversion is not cosmetic: `amount` and `account_id` must reach
- * the server as JSON *numbers*, because pgtype.Numeric hands the raw bytes to
- * the Postgres numeric parser and a quoted string comes back as
- * 400 "invalid request body".
- */
 const schema = z.object({
   account_id: z
     .string()
@@ -46,7 +39,7 @@ export function CreateTransactionDialog({
 }) {
   const createTransaction = useCreateTransaction()
 
-  const { control, handleSubmit, formState, reset } = useForm<FormValues>({
+  const { register, handleSubmit, formState, reset } = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: { account_id: accountId ? String(accountId) : '', amount: '' },
   })
@@ -73,36 +66,24 @@ export function CreateTransactionDialog({
           <Stack spacing={2} sx={{ pt: 1 }}>
             {createTransaction.isError && <ErrorState error={createTransaction.error} />}
 
-            <Controller
-              name="account_id"
-              control={control}
-              render={({ field }) => (
-                <TextField
-                  {...field}
-                  label="Account ID"
-                  type="number"
-                  fullWidth
-                  disabled={accountId !== undefined}
-                  error={Boolean(formState.errors.account_id)}
-                  helperText={formState.errors.account_id?.message}
-                />
-              )}
+            <TextField
+              label="Account ID"
+              type="number"
+              fullWidth
+              disabled={accountId !== undefined}
+              error={Boolean(formState.errors.account_id)}
+              helperText={formState.errors.account_id?.message}
+              {...register('account_id')}
             />
 
-            <Controller
-              name="amount"
-              control={control}
-              render={({ field }) => (
-                <TextField
-                  {...field}
-                  label="Amount"
-                  type="number"
-                  fullWidth
-                  slotProps={{ htmlInput: { step: '0.01' } }}
-                  error={Boolean(formState.errors.amount)}
-                  helperText={formState.errors.amount?.message}
-                />
-              )}
+            <TextField
+              label="Amount"
+              type="number"
+              fullWidth
+              slotProps={{ htmlInput: { step: '0.01' } }}
+              error={Boolean(formState.errors.amount)}
+              helperText={formState.errors.amount?.message}
+              {...register('amount')}
             />
 
             <Typography variant="caption" color="text.secondary">

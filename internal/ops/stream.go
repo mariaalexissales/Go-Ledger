@@ -6,6 +6,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
 	"time"
@@ -17,11 +18,6 @@ const (
 	maxReplayEvents   = 500
 )
 
-// streamEvents serves the live security event feed as Server-Sent Events.
-//
-// Each frame carries the database id, so a browser reconnecting after an HMR
-// reload or a laptop sleep sends Last-Event-ID automatically and gets the gap
-// replayed rather than silently losing events.
 func (c *Console) streamEvents(w http.ResponseWriter, r *http.Request) {
 	rc := http.NewResponseController(w)
 	filter := parseEventFilter(r)
@@ -29,7 +25,6 @@ func (c *Console) streamEvents(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/event-stream")
 	w.Header().Set("Cache-Control", "no-cache")
 	w.Header().Set("Connection", "keep-alive")
-	// Tells nginx and Vite's dev proxy not to buffer the response.
 	w.Header().Set("X-Accel-Buffering", "no")
 	w.WriteHeader(http.StatusOK)
 
@@ -37,9 +32,6 @@ func (c *Console) streamEvents(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Subscribe before replaying, so events created during the replay query
-	// queue up rather than falling through the gap. Anything replayed is then
-	// skipped by id when the live loop starts.
 	sub := c.hub.Subscribe()
 	defer sub.Close()
 
@@ -70,14 +62,10 @@ func (c *Console) streamEvents(w http.ResponseWriter, r *http.Request) {
 			}
 
 		case <-heartbeat.C:
-			// An SSE comment keeps proxies from timing the connection out
-			// without firing onmessage on the client.
 			if err := writeRaw(w, rc, ": ping\n\n"); err != nil {
 				return
 			}
 
-			// Tell the client when it has fallen behind, so the UI can say the
-			// feed is a live tail rather than a complete record.
 			if dropped := sub.Dropped(); dropped > reportedDrops {
 				reportedDrops = dropped
 				if err := writeLag(w, rc, dropped); err != nil {
@@ -88,7 +76,6 @@ func (c *Console) streamEvents(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// replay sends stored events newer than sinceID and returns the highest id sent.
 func (c *Console) replay(w http.ResponseWriter, rc *http.ResponseController, r *http.Request, sinceID int64, filter eventFilter) int64 {
 	rows, err := c.db.Query(r.Context(), `
 		SELECT id, timestamp, ip_address, action_type, flag_status
@@ -128,17 +115,25 @@ type eventFilter struct {
 	ips        map[string]struct{}
 }
 
+func parseIPFilter(q url.Values) []string {
+	ips := []string{}
+	for _, part := range strings.Split(q.Get("ip_address"), ",") {
+		if part = strings.TrimSpace(part); part != "" {
+			ips = append(ips, part)
+		}
+	}
+	return ips
+}
+
 func parseEventFilter(r *http.Request) eventFilter {
 	q := r.URL.Query()
 	f := eventFilter{flagStatus: q.Get("flag_status")}
 
-	for _, part := range strings.Split(q.Get("ip_address"), ",") {
-		if part = strings.TrimSpace(part); part != "" {
-			if f.ips == nil {
-				f.ips = make(map[string]struct{})
-			}
-			f.ips[part] = struct{}{}
+	for _, ip := range parseIPFilter(q) {
+		if f.ips == nil {
+			f.ips = make(map[string]struct{})
 		}
+		f.ips[ip] = struct{}{}
 	}
 
 	return f
@@ -182,8 +177,6 @@ func writeLag(w http.ResponseWriter, rc *http.ResponseController, dropped int64)
 	return writeRaw(w, rc, fmt.Sprintf("event: lag\ndata: {\"dropped\":%d}\n\n", dropped))
 }
 
-// writeRaw applies a write deadline so a stalled client cannot pin the handler
-// goroutine indefinitely.
 func writeRaw(w http.ResponseWriter, rc *http.ResponseController, s string) error {
 	_ = rc.SetWriteDeadline(time.Now().Add(streamWriteWait))
 

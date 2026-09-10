@@ -5,8 +5,6 @@ import (
 	"testing"
 )
 
-// The ledger endpoints' real values. ParsePage takes them as arguments, so the
-// cases below read the same way they did when this lived in internal/api.
 const (
 	testFallback = 25
 	testMax      = 100

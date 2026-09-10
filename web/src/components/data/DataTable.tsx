@@ -1,19 +1,17 @@
 import type { ReactNode } from 'react'
-import Box from '@mui/material/Box'
-import LinearProgress from '@mui/material/LinearProgress'
-import Skeleton from '@mui/material/Skeleton'
-import Table from '@mui/material/Table'
-import TableBody from '@mui/material/TableBody'
-import TableCell from '@mui/material/TableCell'
-import TableContainer from '@mui/material/TableContainer'
-import TableHead from '@mui/material/TableHead'
-import TablePagination from '@mui/material/TablePagination'
-import TableRow from '@mui/material/TableRow'
+import {
+  Box,
+  LinearProgress,
+  Skeleton,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TablePagination,
+  TableRow,
+} from '@mui/material'
 import { EmptyState } from '@/components/feedback/States'
-
-/**
- * The server-paginated read-only table used across the console.
- */
 
 export interface Pagination {
   page: number
@@ -23,17 +21,9 @@ export interface Pagination {
 export interface Column<T> {
   key: string
   header: ReactNode
-  /**
-   * Fixed width in px. Leave it off exactly one column. That one absorbs the
-   * slack, which is what DataGrid's `flex: 1` did.
-   */
   width?: number
   align?: 'left' | 'right' | 'center'
-  /**
-   * Formats the raw cell value for this column's `key`. Ignored when `render`
-   * is set, which takes the whole row instead.
-   */
-  format?(value: unknown, row: T): ReactNode
+  format?(value: unknown): ReactNode
   render?: (row: T) => ReactNode
 }
 
@@ -46,13 +36,10 @@ interface DataTableProps<T> {
   onPaginationChange: (next: Pagination) => void
   pageSizeOptions?: number[]
   onRowClick?: (row: T) => void
-  emptyTitle?: string
+  emptyTitle: string
   emptyDescription?: string
-  /** Floor before the container scrolls sideways instead of squashing. */
   minWidth?: number
-  /** When set, the container scrolls and the header sticks. */
   maxHeight?: number | string
-  /** Accessible name for the table. */
   label: string
 }
 
@@ -60,7 +47,7 @@ function renderCell<T>(column: Column<T>, row: T): ReactNode {
   if (column.render) return column.render(row)
 
   const raw = (row as Record<string, unknown>)[column.key]
-  if (column.format) return column.format(raw, row)
+  if (column.format) return column.format(raw)
 
   return raw as ReactNode
 }
@@ -74,14 +61,12 @@ export function DataTable<T>({
   onPaginationChange,
   pageSizeOptions = [10, 25, 50, 100],
   onRowClick,
-  emptyTitle = 'Nothing to show',
+  emptyTitle,
   emptyDescription,
   minWidth,
   maxHeight,
   label,
 }: DataTableProps<T>) {
-  // A filter change can leave the page index past the end of a shrunken result
-  // set. TablePagination warns and renders a negative range when that happens.
   const lastPage = Math.max(0, Math.ceil(rowCount / pagination.pageSize) - 1)
   const page = Math.min(pagination.page, lastPage)
 
@@ -97,10 +82,6 @@ export function DataTable<T>({
           aria-label={label}
           sx={{ tableLayout: 'fixed', minWidth }}
         >
-          {/*
-            Under `table-layout: fixed`, a <col> with no width shares out
-            whatever is left over. That is the whole of DataGrid's flex sizing.
-          */}
           <colgroup>
             {columns.map((column) => (
               <col key={column.key} style={column.width ? { width: column.width } : undefined} />
@@ -118,10 +99,6 @@ export function DataTable<T>({
           </TableHead>
 
           <TableBody>
-            {/*
-              Refetching keeps the current rows and shows a hairline above them.
-              Blanking the table on every page change reads as an error.
-            */}
             {loading && rows.length > 0 && (
               <TableRow sx={{ '&:hover': { bgcolor: 'transparent' } }}>
                 <TableCell colSpan={columns.length} sx={{ p: 0, border: 0 }}>
@@ -154,7 +131,6 @@ export function DataTable<T>({
                 key={(row as { id: string | number }).id}
                 hover={Boolean(onRowClick)}
                 onClick={onRowClick ? () => onRowClick(row) : undefined}
-                // A bare onClick on a row is mouse-only.
                 tabIndex={onRowClick ? 0 : undefined}
                 onKeyDown={
                   onRowClick
@@ -190,8 +166,6 @@ export function DataTable<T>({
         rowsPerPage={pagination.pageSize}
         rowsPerPageOptions={pageSizeOptions}
         onPageChange={(_, next) => onPaginationChange({ ...pagination, page: next })}
-        // Changing page size while deep in the list would otherwise land on a
-        // page that no longer exists.
         onRowsPerPageChange={(event) =>
           onPaginationChange({ page: 0, pageSize: Number(event.target.value) })
         }

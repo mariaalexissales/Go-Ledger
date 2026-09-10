@@ -11,18 +11,10 @@ import (
 	"go-ledger/internal/ops"
 )
 
-// runTimeout caps a single scenario.
 const runTimeout = 90 * time.Second
 
-// ErrAlreadyRunning is returned when a run is requested while one is in flight.
 var ErrAlreadyRunning = errors.New("a demo is already running")
 
-// Runner executes scenarios against the server's own API over loopback.
-//
-// Security note: the target base URL comes from configuration and the request
-// paths are compile-time constants inside scenario files. Nothing about the
-// destination is ever read from an HTTP request. Otherwise this would be an
-// SSRF gadget rather than a demo.
 type Runner struct {
 	baseURL string
 	token   string
@@ -41,13 +33,11 @@ func NewRunner(baseURL, token string, guard *ops.SecurityGuard) *Runner {
 }
 
 func (r *Runner) Run(ctx context.Context, id string) (*Result, error) {
-	scenario, ok := Get(id)
+	scenario, ok := get(id)
 	if !ok {
 		return nil, fmt.Errorf("unknown scenario %q", id)
 	}
 
-	// One at a time: concurrent runs would interleave in the event feed and
-	// make both unreadable.
 	r.mu.Lock()
 	if r.running {
 		r.mu.Unlock()
@@ -67,8 +57,6 @@ func (r *Runner) Run(ctx context.Context, id string) (*Result, error) {
 
 	policy := r.guard.Limiter().Policy()
 
-	// Start from a clean slate so the run's numbers reflect the run alone and
-	// not whatever happened to be tracked beforehand.
 	r.guard.Limiter().Reset()
 
 	client := newClient(r.baseURL, r.token, policy)
@@ -103,7 +91,7 @@ func summarize(result *Result, meta Meta) Summary {
 	ips := make(map[string]struct{})
 	for _, step := range result.Steps {
 		if step.Method == "" {
-			continue // an annotation, not a request
+			continue
 		}
 
 		s.Sent++

@@ -92,12 +92,9 @@ func TestRateLimiterBlockedIPs(t *testing.T) {
 }
 
 func TestRateLimiterSweeperDropsExpiredBlocks(t *testing.T) {
-	// The sweeper runs every window*2, so a 10ms window gives it a 20ms tick.
 	rl := NewRateLimiter(1, 10*time.Millisecond, 20*time.Millisecond)
 	t.Cleanup(rl.Close)
 
-	// One blocked IP that never comes back. Allow is the only other path that
-	// clears a block, and it only ever clears the IP it was called with.
 	rl.Allow("198.51.100.9")
 	rl.Allow("198.51.100.9")
 
@@ -122,8 +119,6 @@ func TestRateLimiterSweeperKeepsLiveBlocks(t *testing.T) {
 	rl.Allow("198.51.100.10")
 	rl.Allow("198.51.100.10")
 
-	// Long enough for several sweeps. The block has an hour to run, so none of
-	// them may touch it.
 	time.Sleep(80 * time.Millisecond)
 
 	if got := rl.blockedCount(); got != 1 {
@@ -136,9 +131,8 @@ func TestRateLimiterSetPolicyClearsState(t *testing.T) {
 	t.Cleanup(rl.Close)
 
 	rl.Allow("203.0.113.6")
-	rl.Allow("203.0.113.6") // now blocked
+	rl.Allow("203.0.113.6")
 
-	// A policy change should not leave IPs serving a block under the old rules.
 	rl.SetPolicy(5, 10*time.Second, 10*time.Second)
 
 	if decision := rl.Allow("203.0.113.6"); !decision.Allowed {

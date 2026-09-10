@@ -7,7 +7,7 @@ export const demosQueries = {
     queryOptions({
       queryKey: qk.demos.list(),
       queryFn: ({ signal }) => demosApi.list(signal),
-      staleTime: Infinity, // The registry is fixed at build time.
+      staleTime: Infinity,
     }),
 }
 
@@ -17,8 +17,6 @@ export function useRunDemo() {
   return useMutation({
     mutationFn: (id: string) => demosApi.run(id),
     onSuccess: () => {
-      // The run just wrote a pile of security events and may have left IPs
-      // blocked.
       queryClient.invalidateQueries({ queryKey: qk.security.all })
     },
   })

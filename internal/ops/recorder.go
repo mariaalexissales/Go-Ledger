@@ -16,11 +16,6 @@ const (
 	recorderFlushTimeout  = 5 * time.Second
 )
 
-// Recorder persists security events and then fans them out to live subscribers.
-//
-// Events are published to the hub only after the insert returns, so every
-// streamed event carries a real database id. That id is what makes SSE
-// reconnection via Last-Event-ID lossless.
 type Recorder struct {
 	db  *pgxpool.Pool
 	hub *Hub
@@ -40,8 +35,6 @@ func NewRecorder(db *pgxpool.Pool, hub *Hub) *Recorder {
 	}
 }
 
-// Record enqueues an event. It never blocks: if the queue is saturated the
-// event is dropped and counted.
 func (r *Recorder) Record(ip, actionType, flagStatus string, at time.Time) {
 	event := SecurityEvent{
 		Timestamp:  at,
@@ -57,14 +50,10 @@ func (r *Recorder) Record(ip, actionType, flagStatus string, at time.Time) {
 	}
 }
 
-// Dropped counts events discarded because the queue was full.
 func (r *Recorder) Dropped() int64 { return r.dropped.Load() }
 
-// Failed counts events lost to database errors.
 func (r *Recorder) Failed() int64 { return r.failed.Load() }
 
-// Run drives the batching loop until ctx is cancelled, then drains whatever is
-// still queued before signalling completion via Done.
 func (r *Recorder) Run(ctx context.Context) {
 	defer close(r.done)
 
@@ -96,10 +85,8 @@ func (r *Recorder) Run(ctx context.Context) {
 	}
 }
 
-// Done closes once Run has flushed everything and returned.
 func (r *Recorder) Done() <-chan struct{} { return r.done }
 
-// drain pulls whatever is left in the queue without blocking.
 func (r *Recorder) drain(batch []SecurityEvent) []SecurityEvent {
 	for {
 		select {
@@ -128,8 +115,6 @@ func (r *Recorder) flush(batch []SecurityEvent) {
 		times[i] = event.Timestamp
 	}
 
-	// A fresh context: flush must still complete when Run was cancelled by
-	// shutdown.
 	ctx, cancel := context.WithTimeout(context.Background(), recorderFlushTimeout)
 	defer cancel()
 

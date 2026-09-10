@@ -29,8 +29,6 @@ export function useCreateAccount() {
 
   return useMutation({
     mutationFn: (body: CreateAccountRequest) => accountsApi.create(body),
-    // Not optimistic: the server assigns id, balance and created_at, so an
-    // optimistic row would render with invented values and visibly flicker.
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: qk.accounts.all })
     },
@@ -43,7 +41,6 @@ export function useDeleteAccount() {
   return useMutation({
     mutationFn: (id: number) => accountsApi.remove(id),
     onSuccess: () => {
-      // Deleting an account cascades to its transactions.
       queryClient.invalidateQueries({ queryKey: qk.accounts.all })
       queryClient.invalidateQueries({ queryKey: qk.transactions.all })
     },

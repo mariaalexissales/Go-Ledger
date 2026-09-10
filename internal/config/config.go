@@ -1,5 +1,4 @@
-// Package config centralizes environment-driven configuration so the rest of
-// the application never reaches for os.Getenv directly.
+// Package config centralizes environment-driven configuration so nothing else reaches for os.Getenv.
 package config
 
 import (
@@ -10,51 +9,27 @@ import (
 	"time"
 )
 
-// Config holds every tunable knob for the server. Values come from the
-// environment. The defaults are chosen so a fresh clone runs, and so the rate
-// limiter still trips easily enough to demonstrate.
 type Config struct {
 	DatabaseURL string
 	Port        string
 
-	// CORSAllowedOrigins is empty in container mode, where the SPA is served
-	// from the same origin as the API and no CORS headers are required.
 	CORSAllowedOrigins []string
 
-	// Defaults are loose enough that ordinary browsing never trips the guard.
-	// The demo scenarios read the live policy and scale their request counts to
-	// it, so they stay dramatic at any setting.
 	RateLimit       int
 	RateWindow      time.Duration
 	RateBlockPeriod time.Duration
 
-	// ClientIPMode selects how a request's source identity is resolved. The
-	// default reproduces the original, deliberately spoofable behavior; the
-	// demos let you switch it and watch the difference.
 	ClientIPMode string
 
-	// OpsEnabled gates the whole /ops observability plane. It has no auth, so
-	// it must be turned off anywhere that is not a local demo.
-	OpsEnabled bool
-	// DemosEnabled gates the scenario runner, which generates load on command.
+	OpsEnabled   bool
 	DemosEnabled bool
-	// SeedOnStart fills an empty database before serving. Idempotent.
-	SeedOnStart bool
+	SeedOnStart  bool
 
-	// FakeSeed makes the generated ledger reproducible. The recording workflow
-	// sets it so re-recording the public demo yields the same 50 accounts, and
-	// fixture diffs show what actually changed. Zero keeps gofakeit's
-	// crypto-random default.
 	FakeSeed uint64
 
-	// SPADir serves the built console from disk. Empty falls back to the
-	// bundle embedded with -tags embed_spa, if any.
 	SPADir string
 }
 
-// Load reads configuration from the environment. It returns an error only for
-// values that are genuinely required or malformed; everything else falls back
-// to a documented default.
 func Load() (*Config, error) {
 	cfg := &Config{
 		DatabaseURL:        os.Getenv("DATABASE_URL"),
@@ -64,10 +39,7 @@ func Load() (*Config, error) {
 		OpsEnabled:         envBool("OPS_ENABLED", true),
 		DemosEnabled:       envBool("DEMOS_ENABLED", true),
 		SeedOnStart:        envBool("SEED_ON_START", false),
-		// Trimmed because a stray trailing space is easy to introduce in a .env
-		// file or a shell one-liner, and it turns into a path that does not
-		// exist. The server then falls back to the placeholder page.
-		SPADir: strings.TrimSpace(os.Getenv("SPA_DIR")),
+		SPADir:             strings.TrimSpace(os.Getenv("SPA_DIR")),
 	}
 
 	if cfg.DatabaseURL == "" {
@@ -98,9 +70,6 @@ func envString(key, fallback string) string {
 	return fallback
 }
 
-// envStringSlice splits a comma-separated list. An explicit empty value (as
-// opposed to an unset variable) means "no origins", which is how container
-// mode disables CORS entirely.
 func envStringSlice(key, fallback string) []string {
 	v, ok := os.LookupEnv(key)
 	if !ok {

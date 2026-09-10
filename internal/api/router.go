@@ -1,5 +1,4 @@
-// Package api assembles the HTTP surface: the guarded ledger routes, the
-// unguarded observability plane, and the SPA fallback behind them.
+// Package api assembles the HTTP surface: the guarded ledger routes, the ops plane and the SPA fallback.
 package api
 
 import (
@@ -19,23 +18,15 @@ type API struct {
 	DB *pgxpool.Pool
 }
 
-// Deps are the long-lived components the router wires together. They are
-// constructed in main so their lifecycles (the recorder's worker goroutine in
-// particular) can be tied to the process, not to the router.
 type Deps struct {
 	Cfg     *config.Config
 	Pool    *pgxpool.Pool
 	Guard   *ops.SecurityGuard
 	Console *ops.Console
-	// Demos is mounted under /ops/demos when non-nil.
-	Demos http.Handler
-	// SPA handles any path the API does not claim. Unknown /api and /ops paths
-	// still return JSON 404s because those sub-routers set their own NotFound
-	// handlers before being mounted.
-	SPA http.Handler
+	Demos   http.Handler
+	SPA     http.Handler
 }
 
-// NewRouter assembles the HTTP surface.
 func NewRouter(d Deps) http.Handler {
 	a := &API{DB: d.Pool}
 	r := chi.NewRouter()
@@ -50,8 +41,6 @@ func NewRouter(d Deps) http.Handler {
 	// Nor middleware.Logger: it wraps the ResponseWriter that the SSE handler
 	// reaches through http.NewResponseController.
 
-	// Only needed in dev, where Vite serves the SPA from a different origin.
-	// In container mode the SPA is same-origin and this list is empty.
 	if len(d.Cfg.CORSAllowedOrigins) > 0 {
 		r.Use(cors.Handler(cors.Options{
 			AllowedOrigins: d.Cfg.CORSAllowedOrigins,
@@ -86,13 +75,9 @@ func NewRouter(d Deps) http.Handler {
 	return r
 }
 
-// ledgerRoutes is the guarded business API.
 func ledgerRoutes(a *API, guard *ops.SecurityGuard) http.Handler {
 	r := chi.NewRouter()
 
-	// Set before any mounting so chi does not inherit a parent handler. Without
-	// this, the SPA fallback added in the server layer would return HTML for
-	// unknown API paths.
 	r.NotFound(jsonNotFound)
 	r.MethodNotAllowed(jsonMethodNotAllowed)
 
@@ -116,7 +101,6 @@ func ledgerRoutes(a *API, guard *ops.SecurityGuard) http.Handler {
 	return r
 }
 
-// opsRoutes is the unguarded observability plane.
 func opsRoutes(console *ops.Console, demos http.Handler) http.Handler {
 	r := chi.NewRouter()
 

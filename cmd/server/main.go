@@ -33,12 +33,19 @@ func main() {
 }
 
 func run(args []string) error {
-	if len(args) > 0 && args[0] == "healthcheck" {
-		return runHealthcheck()
+	command := ""
+	if len(args) > 0 {
+		command = args[0]
 	}
 
-	// A missing .env is normal in a container, where configuration arrives as
-	// real environment variables. Only report it.
+	switch command {
+	case "healthcheck":
+		return runHealthcheck()
+	case "", "serve", "reset", "seed":
+	default:
+		return fmt.Errorf("unknown command %q (want serve, seed, reset or healthcheck)", command)
+	}
+
 	if err := godotenv.Load(); err != nil {
 		log.Printf("No .env file loaded (%v); falling back to the environment", err)
 	} else {
@@ -53,17 +60,6 @@ func run(args []string) error {
 	ipMode, err := ops.ParseClientIPMode(cfg.ClientIPMode)
 	if err != nil {
 		return fmt.Errorf("invalid configuration: %w", err)
-	}
-
-	var command string
-	if len(args) > 0 {
-		command = args[0]
-	}
-
-	switch command {
-	case "", "serve", "reset", "seed":
-	default:
-		return fmt.Errorf("unknown command %q (want serve, seed, reset or healthcheck)", command)
 	}
 
 	log.Println("Running migrations")
@@ -122,16 +118,13 @@ func seedLedger(pool *pgxpool.Pool, fakeSeed uint64) error {
 }
 
 func serve(cfg *config.Config, ipMode ops.ClientIPMode, pool *pgxpool.Pool) error {
-	var err error
-
-	// The demo token authorizes the trusted X-Demo-Client-IP channel. Generated
-	// per process and never persisted, so only the in-process runner holds it.
 	demoToken := ""
 	if cfg.DemosEnabled {
-		demoToken, err = randomToken()
+		token, err := randomToken()
 		if err != nil {
 			return err
 		}
+		demoToken = token
 	}
 
 	limiter := ops.NewRateLimiter(cfg.RateLimit, cfg.RateWindow, cfg.RateBlockPeriod)
@@ -143,8 +136,6 @@ func serve(cfg *config.Config, ipMode ops.ClientIPMode, pool *pgxpool.Pool) erro
 	guard := ops.NewSecurityGuard(limiter, recorder, resolver)
 	console := ops.NewConsole(pool, hub, guard, cfg.DemosEnabled)
 
-	// The runner targets the server's own loopback address, taken from config
-	// only, never from anything derived from a request.
 	var demos http.Handler
 	if cfg.DemosEnabled {
 		runner := demo.NewRunner("http://127.0.0.1:"+cfg.Port, demoToken, guard)
@@ -152,8 +143,6 @@ func serve(cfg *config.Config, ipMode ops.ClientIPMode, pool *pgxpool.Pool) erro
 		log.Printf("Demo scenarios enabled (%d available)", len(demo.All()))
 	}
 
-	// The recorder outlives the signal context on purpose: requests still in
-	// flight during shutdown record events, and those should be persisted too.
 	recorderCtx, stopRecorder := context.WithCancel(context.Background())
 	go recorder.Run(recorderCtx)
 
@@ -215,7 +204,6 @@ func serve(cfg *config.Config, ipMode ops.ClientIPMode, pool *pgxpool.Pool) erro
 		log.Printf("Server forced to shutdown: %v", err)
 	}
 
-	// Only now that no more requests can arrive: drain the event queue.
 	stopRecorder()
 	select {
 	case <-recorder.Done():

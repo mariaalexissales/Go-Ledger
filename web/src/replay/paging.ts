@@ -20,9 +20,5 @@ export function paginate<T>(
   const limit = clampInt(query.limit, fallback, max)
   const offset = Math.max(0, Number(query.offset) || 0)
 
-  return list(rows.slice(offset, offset + limit), rows.length, limit, offset)
-}
-
-export function list<T>(data: T[], total: number, limit: number, offset: number): ListResponse<T> {
-  return { data, total, limit, offset }
+  return { data: rows.slice(offset, offset + limit), total: rows.length, limit, offset }
 }

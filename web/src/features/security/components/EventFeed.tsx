@@ -3,17 +3,13 @@ import { formatTime, ipColor } from '@/lib/format'
 import type { SecurityEvent } from '../security.types'
 import { EmptyState } from '@/components/feedback/States'
 
-/**
- * The live tail of the security log. Rows are keyed by the database id, which
- * the server assigns before publishing, so React never sees a duplicate key.
- */
 export function EventFeed({
   events,
-  height = 420,
+  height,
   emptyHint,
 }: {
   events: SecurityEvent[]
-  height?: number | string
+  height: number | string
   emptyHint?: string
 }) {
   if (events.length === 0) {
@@ -47,8 +43,6 @@ function EventRow({ event }: { event: SecurityEvent }) {
         py: 0.5,
         borderRadius: 1,
         fontSize: 13,
-        // A tinted row rather than a saturated block, so a screen full of
-        // blocked events stays readable.
         bgcolor: event.blocked ? 'estral.blockedRow' : 'transparent',
       }}
     >
@@ -79,8 +73,6 @@ function EventRow({ event }: { event: SecurityEvent }) {
       <Chip
         size="small"
         color={event.blocked ? 'error' : 'success'}
-        // Aberration needs a dark ground. Split over contrastText on a
-        // saturated fill just reads as mud.
         variant={event.blocked ? 'glitch' : 'outlined'}
         label={event.flag_status}
         sx={{ fontSize: 10, height: 20 }}

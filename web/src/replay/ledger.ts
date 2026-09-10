@@ -2,14 +2,6 @@ import type { Account } from '@/features/accounts/accounts.types'
 import type { Transaction } from '@/features/transactions/transactions.types'
 import { loadIndex } from './fixtures'
 
-/**
- * An in-memory stand-in for the accounts and transactions tables, seeded from a
- * snapshot of the real seeded database.
- *
- * Writes work so the forms are not dead ends, but they live in this tab only and
- * vanish on reload. The UI says so rather than letting anyone think they just
- * wrote to a ledger.
- */
 class ReplayLedger {
   private accounts: Account[] = []
   private transactions: Transaction[] = []
@@ -65,7 +57,6 @@ class ReplayLedger {
     if (index === -1) return false
 
     this.accounts.splice(index, 1)
-    // ON DELETE CASCADE, same as the schema.
     this.transactions = this.transactions.filter((transaction) => transaction.account_id !== id)
     return true
   }
@@ -78,7 +69,6 @@ class ReplayLedger {
         ? this.transactions
         : this.transactions.filter((transaction) => transaction.account_id === accountId)
 
-    // Matches the server: newest first, id as the tiebreaker.
     return [...matches].sort(
       (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime() || b.id - a.id,
     )
@@ -88,7 +78,7 @@ class ReplayLedger {
     await this.ensureLoaded()
 
     const account = this.accounts.find((candidate) => candidate.id === accountId)
-    if (!account) return null // the foreign key violation, in miniature
+    if (!account) return null
 
     const transaction: Transaction = {
       id: this.nextTransactionId++,
@@ -117,7 +107,6 @@ function maxId(rows: { id: number }[]): number {
   return rows.reduce((max, row) => Math.max(max, row.id), 0)
 }
 
-// NUMERIC(15,2). Keep the same two-decimal shape the column enforces.
 function round2(value: number): number {
   return Math.round(value * 100) / 100
 }

@@ -1,9 +1,3 @@
-// The latin-* entrypoints, not the bare 400.css. Those pull latin-ext,
-// cyrillic and vietnamese for a console that ships no translations. Two
-// weights is the whole set: 400 for everything, 600 for labels and <strong>.
-// Importing here rather than in the theme keeps it in the entry chunk, so the
-// stylesheet link lands in <head> and the preload scanner finds the font at
-// the same time as the JS.
 import '@fontsource/ibm-plex-mono/latin-400.css'
 import '@fontsource/ibm-plex-mono/latin-600.css'
 
@@ -22,7 +16,6 @@ const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       staleTime: 10_000,
-      // Retrying a 429 just extends the block, and a 404 will not fix itself.
       retry: (failureCount, error) => {
         if (error instanceof ApiError && error.status >= 400 && error.status < 500) return false
         return failureCount < 2
@@ -48,12 +41,6 @@ declare module '@tanstack/react-router' {
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    {/*
-      Dark by default rather than "system". ESTRAL is a dark palette first, so
-      following the OS would drop anyone with a light desktop into the
-      secondary look on their first visit. An explicit choice still wins and
-      still persists, under localStorage's `mui-mode`.
-    */}
     <ThemeProvider theme={theme} defaultMode="dark">
       <CssBaseline enableColorScheme />
       <QueryClientProvider client={queryClient}>

@@ -2,10 +2,6 @@ import type { AccountListParams } from '@/features/accounts/accounts.types'
 import type { TransactionListParams } from '@/features/transactions/transactions.types'
 import type { EventListParams } from '@/features/security/security.types'
 
-/**
- * One factory for every cache key. Ad-hoc arrays at call sites are how
- * invalidation quietly stops matching.
- */
 export const qk = {
   accounts: {
     all: ['accounts'] as const,
@@ -25,7 +21,6 @@ export const qk = {
     config: () => ['security', 'config'] as const,
   },
   demos: {
-    all: ['demos'] as const,
     list: () => ['demos', 'list'] as const,
   },
 } as const

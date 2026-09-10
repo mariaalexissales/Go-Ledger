@@ -6,23 +6,15 @@ import (
 	"time"
 )
 
-// scenarios is every demo the server offers, in reading order. Adding one means
-// adding an entry here; nothing else needs wiring.
-//
-// Note how each Run scales itself to c.Policy().Limit rather than hardcoding a
-// request count. That is what keeps these meaningful after the limit is retuned
-// in the console -- a scenario built for a limit of 30 would stop demonstrating
-// anything at a limit of 5.
 var scenarios = []Scenario{
 	{
 		Meta: Meta{
-			ID:      "baseline",
-			Name:    "Normal traffic",
-			Summary: "A handful of ordinary clients browsing the ledger at a human pace.",
-			Teaches: "What a healthy log looks like. Every scenario after this one should be read against it.",
-			Expect:  "Every request ALLOWED. No blocks, no gaps.",
-			Tags:    []string{"baseline"},
-			// Four IPs, three requests each, ~250ms apart.
+			ID:               "baseline",
+			Name:             "Normal traffic",
+			Summary:          "A handful of ordinary clients browsing the ledger at a human pace.",
+			Teaches:          "What a healthy log looks like. Every scenario after this one should be read against it.",
+			Expect:           "Every request ALLOWED. No blocks, no gaps.",
+			Tags:             []string{"baseline"},
 			EstimatedSeconds: 4,
 		},
 		Run: runBaseline,
@@ -101,8 +93,6 @@ func runBaseline(ctx context.Context, c *Client) error {
 func runBurst(ctx context.Context, c *Client) error {
 	const ip = "203.0.113.7"
 
-	// Scaled to the live policy so the scenario still lands if the limit was
-	// tuned in the console.
 	limit := c.Policy().Limit
 	total := min(limit*2+5, maxRequestsPerRun)
 
@@ -137,10 +127,6 @@ func runEnumeration(ctx context.Context, c *Client) error {
 func runLowAndSlow(ctx context.Context, c *Client) error {
 	limit := c.Policy().Limit
 
-	// Six requests per IP, or one under the limit if the limit is tighter than
-	// that. At the default limit of 30 this is 6 -- well under, not just under,
-	// because the point is the distributed total rather than how close each
-	// source gets to tripping.
 	perIP := min(limit-1, 6)
 	if perIP < 1 {
 		perIP = 1
@@ -170,8 +156,6 @@ func runXFFSpoof(ctx context.Context, c *Client) error {
 	c.Note(fmt.Sprintf("One client, %d requests, a new forged X-Forwarded-For each time. The limit is %d.", total, limit))
 
 	for i := range total {
-		// Spoof, not As: this scenario exists to test whether the server
-		// believes an untrusted header.
 		ip := fmt.Sprintf("198.18.%d.%d", i/256, i%256)
 		if _, err := c.Get(ctx, Spoof(ip), fmt.Sprintf("/api/accounts/%d", (i%20)+1)); err != nil {
 			return err

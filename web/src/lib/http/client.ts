@@ -3,11 +3,6 @@ import { rateLimitStore } from '@/lib/rateLimit'
 import { REPLAY } from '@/replay/mode'
 import { replayRequest } from '@/replay/transport'
 
-/**
- * Empty by default so every request is relative: the Vite proxy handles dev and
- * same-origin handles the container build. Set VITE_API_URL only to talk to a
- * server on another origin, which is exactly when CORS matters.
- */
 const BASE_URL = import.meta.env.VITE_API_URL ?? ''
 
 export function apiUrl(path: string, params?: QueryParams): string {
@@ -15,11 +10,6 @@ export function apiUrl(path: string, params?: QueryParams): string {
   return `${BASE_URL}${path}${query}`
 }
 
-/**
- * Deliberately `object` rather than an index-signature type: the feature
- * modules pass their own typed param interfaces, and interfaces do not get
- * implicit index signatures in TypeScript.
- */
 export type QueryParams = object
 
 function buildQuery(params: QueryParams): string {
@@ -65,8 +55,6 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
   if (!res.ok) {
     const error = await toApiError(res)
 
-    // Surface 429s globally: the banner and the disabled mutation buttons are
-    // driven from one place rather than per-component error handling.
     if (error.isRateLimited) {
       rateLimitStore.trip(error.retryAfterSec ?? 30)
     }
@@ -89,7 +77,6 @@ export const api = {
   delete: <T>(path: string, signal?: AbortSignal) => request<T>(path, { method: 'DELETE', signal }),
 }
 
-/** Shared envelope for every collection endpoint. */
 export interface ListResponse<T> {
   data: T[]
   total: number

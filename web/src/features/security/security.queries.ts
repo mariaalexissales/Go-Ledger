@@ -14,8 +14,6 @@ export const securityQueries = {
     queryOptions({
       queryKey: qk.security.stats(window),
       queryFn: ({ signal }) => securityApi.stats(window, signal),
-      // The live stream drives most updates; this is a slow backstop for the
-      // aggregate tiles.
       refetchInterval: 15_000,
     }),
 

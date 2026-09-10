@@ -1,10 +1,3 @@
-/**
- * The API answers with more than one error shape: the JSON `{"error": "..."}`
- * envelope from our handlers, plain text from anything in front of the server,
- * and empty bodies on some statuses. Calling `res.json()` in the error path
- * throws a SyntaxError on two of those and hides the real status, so everything
- * funnels through here instead.
- */
 export class ApiError extends Error {
   readonly status: number
   readonly retryAfterSec?: number
@@ -38,9 +31,7 @@ export async function toApiError(res: Response): Promise<ApiError> {
   let raw = ''
   try {
     raw = await res.text()
-  } catch {
-    // A body that cannot be read is not worth failing over.
-  }
+  } catch {}
 
   return new ApiError(res.status, extractMessage(raw, res.status), retryAfter)
 }
@@ -53,13 +44,10 @@ function extractMessage(raw: string, status: number): string {
       const parsed = JSON.parse(trimmed) as { error?: unknown; message?: unknown }
       const message = parsed.error ?? parsed.message
       if (typeof message === 'string' && message) return message
-    } catch {
-      // Fall through to the plain-text handling below.
-    }
+    } catch {}
   }
 
   if (trimmed) {
-    // Cap it: an HTML error page from a proxy would otherwise land in a toast.
     return trimmed.length > 200 ? `${trimmed.slice(0, 200)}…` : trimmed
   }
 

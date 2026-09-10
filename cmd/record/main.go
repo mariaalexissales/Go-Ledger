@@ -1,10 +1,4 @@
-// Command record captures real demo runs from a running go-ledger server and
-// writes them to web/public/replay as JSON fixtures.
-//
-// Usage (with the server already running):
-//
-//	go run ./cmd/record
-//	go run ./cmd/record -base http://localhost:8080 -out web/public/replay
+// Command record drives a running server and captures each scenario into the Pages replay fixtures.
 package main
 
 import (
@@ -68,8 +62,6 @@ func (r *recorder) run() error {
 	}
 
 	originalMode := config.ClientIPMode
-	// Leave the dev server exactly as it was found, including on failure.
-	// Otherwise the next manual test silently runs in the wrong mode.
 	defer func() {
 		if originalMode == "" {
 			return
@@ -115,18 +107,14 @@ func (r *recorder) run() error {
 	return r.writeIndex(config, demos.Data, ledger)
 }
 
-// fixture is one scenario captured in one client IP mode.
 type fixture struct {
 	ScenarioID   string           `json:"scenario_id"`
 	ClientIPMode ops.ClientIPMode `json:"client_ip_mode"`
 	RecordedAt   time.Time        `json:"recorded_at"`
 	Result       demo.Result      `json:"result"`
-	// Events are the real security_events rows the run produced, oldest first.
-	Events []ops.EventDTO `json:"events"`
+	Events       []ops.EventDTO   `json:"events"`
 }
 
-// volatileKeys are fields that differ on every recording without carrying any
-// meaning: wall-clock stamps and millisecond timings measured over loopback.
 var volatileKeys = map[string]bool{
 	"recorded_at": true,
 	"started_at":  true,
@@ -146,8 +134,6 @@ func (r *recorder) recordScenario(id string, mode ops.ClientIPMode) error {
 		return fmt.Errorf("run scenario: %w", err)
 	}
 
-	// The recorder batches inserts every 100ms, so give the last batch time to
-	// land before reading the events back.
 	time.Sleep(500 * time.Millisecond)
 
 	var events httpx.ListResponse[ops.EventDTO]
@@ -155,7 +141,6 @@ func (r *recorder) recordScenario(id string, mode ops.ClientIPMode) error {
 		return fmt.Errorf("read events: %w", err)
 	}
 
-	// The API returns newest first; replay wants chronological order.
 	slices.Reverse(events.Data)
 
 	f := fixture{
@@ -182,24 +167,20 @@ func (r *recorder) recordScenario(id string, mode ops.ClientIPMode) error {
 	return nil
 }
 
-// recordedConfig is the write shape, and deliberately narrower than opsConfig:
-// `mutable` is a per-process fact that means nothing in a recording. The replay
-// console depends on the omission -- see the Omit<OpsConfig, ...> on ReplayIndex
-// in web/src/replay/fixtures.ts. Adding a field here changes the fixture format.
+// recordedConfig is deliberately narrower than opsConfig: the replay console
+// depends on the omission -- see Omit<OpsConfig, ...> in web/src/replay/fixtures.ts.
 type recordedConfig struct {
 	ClientIPMode ops.ClientIPMode `json:"client_ip_mode"`
 	RateLimit    ops.Policy       `json:"rate_limit"`
 }
 
-// index carries everything the console needs before any scenario is run.
 type index struct {
-	RecordedAt time.Time          `json:"recorded_at"`
-	Modes      []ops.ClientIPMode `json:"modes"`
-	Config     recordedConfig     `json:"config"`
-	Demos      []demo.Meta        `json:"demos"`
-	// Seed data for the ledger pages, which have no backend in replay mode.
-	Accounts     []json.RawMessage `json:"accounts"`
-	Transactions []json.RawMessage `json:"transactions"`
+	RecordedAt   time.Time          `json:"recorded_at"`
+	Modes        []ops.ClientIPMode `json:"modes"`
+	Config       recordedConfig     `json:"config"`
+	Demos        []demo.Meta        `json:"demos"`
+	Accounts     []json.RawMessage  `json:"accounts"`
+	Transactions []json.RawMessage  `json:"transactions"`
 }
 
 type ledgerSnapshot struct {
@@ -313,8 +294,6 @@ func (r *recorder) do(method, target string, body, dst any) error {
 	return json.Unmarshal(payload, dst)
 }
 
-// writeIfChanged leaves an existing fixture alone when the new recording differs
-// only in timing noise, and reports whether it wrote.
 func (r *recorder) writeIfChanged(name string, v any) (bool, error) {
 	encoded, err := json.MarshalIndent(v, "", " ")
 	if err != nil {
@@ -336,9 +315,6 @@ func (r *recorder) writeIfChanged(name string, v any) (bool, error) {
 	return true, os.WriteFile(path, encoded, 0o644)
 }
 
-// meaningfullyEqual reports whether two encoded fixtures are the same once the
-// volatile keys are stripped -- that is, whether a fresh recording differs from
-// the committed one in anything but wall-clock stamps and loopback timings.
 func meaningfullyEqual(a, b any) bool {
 	left, err := json.Marshal(withoutVolatile(a))
 	if err != nil {
@@ -353,7 +329,6 @@ func meaningfullyEqual(a, b any) bool {
 	return bytes.Equal(left, right)
 }
 
-// withoutVolatile returns a copy with every volatile key removed, at any depth.
 func withoutVolatile(v any) any {
 	switch typed := v.(type) {
 	case map[string]any:

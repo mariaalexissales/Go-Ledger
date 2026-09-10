@@ -5,15 +5,11 @@ import (
 	"testing"
 )
 
-// The validator runs on an already-decoded body, so every case here goes
-// through encoding/json first: the zero-value pgtype.Numeric that an absent
-// amount leaves behind is the whole point, and constructing one by hand would
-// not prove the decoder produces it.
 func TestValidateCreateTransaction(t *testing.T) {
 	tests := []struct {
 		name string
 		body string
-		want string // empty means the body should be accepted
+		want string
 	}{
 		{"valid positive amount", `{"account_id":1,"amount":100.50}`, ""},
 		{"valid negative amount", `{"account_id":1,"amount":-42}`, ""},
@@ -29,7 +25,7 @@ func TestValidateCreateTransaction(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			var req CreateTransactionRequest
+			var req createTransactionRequest
 			if err := json.Unmarshal([]byte(tt.body), &req); err != nil {
 				t.Fatalf("decoding %s: %v", tt.body, err)
 			}

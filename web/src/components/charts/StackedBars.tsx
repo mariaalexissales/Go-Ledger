@@ -1,30 +1,21 @@
 import { useEffect, useId, useRef, useState } from 'react'
-import Box from '@mui/material/Box'
-import Stack from '@mui/material/Stack'
-import Typography from '@mui/material/Typography'
+import { Box, Stack, Typography } from '@mui/material'
 import { visuallyHidden } from '@mui/utils'
-
-/**
- * A stacked bar chart, in about a page of SVG.
- */
 
 interface Band {
   label: string
-  /** One entry per series, in the same order. */
   values: readonly number[]
 }
 
 interface Serie {
   label: string
-  /** Any CSS color. A `var(...)` reference is fine, see the note below. */
   color: string
 }
 
 const PAD = { top: 8, right: 8, bottom: 22, left: 36 }
-/** Past this the bars are narrower than the gaps between them and it is noise. */
+const HEIGHT = 260
 const MAX_BANDS = 200
 
-/** Rounds up to 1, 2 or 5 × 10ⁿ so the gridline labels are readable numbers. */
 function niceMax(value: number): number {
   if (value <= 0) return 1
 
@@ -51,13 +42,10 @@ function useWidth(ref: React.RefObject<HTMLDivElement | null>): number {
 export function StackedBars({
   bands,
   series,
-  height = 260,
   label,
 }: {
   bands: readonly Band[]
   series: readonly Serie[]
-  height?: number
-  /** Accessible name. Required, since a bare SVG is invisible to screen readers. */
   label: string
 }) {
   const ref = useRef<HTMLDivElement>(null)
@@ -76,11 +64,10 @@ export function StackedBars({
   const max = niceMax(Math.max(0, ...totals))
 
   const plotW = Math.max(0, width - PAD.left - PAD.right)
-  const plotH = Math.max(0, height - PAD.top - PAD.bottom)
+  const plotH = Math.max(0, HEIGHT - PAD.top - PAD.bottom)
   const bandW = shown.length > 0 ? plotW / shown.length : 0
   const barW = Math.max(1, Math.min(bandW * 0.7, 28))
 
-  // Thin the x labels to whatever fits at ~52px each.
   const every = Math.max(1, Math.ceil(shown.length / Math.max(2, Math.floor(plotW / 52))))
 
   const seriesTotals = series.map((_, s) => shown.reduce((sum, b) => sum + (b.values[s] ?? 0), 0))
@@ -101,8 +88,8 @@ export function StackedBars({
         {width > 0 && (
           <svg
             width={width}
-            height={height}
-            viewBox={`0 0 ${width} ${height}`}
+            height={HEIGHT}
+            viewBox={`0 0 ${width} ${HEIGHT}`}
             role="img"
             aria-labelledby={`${id}-title ${id}-desc`}
             style={{ display: 'block', fontVariantNumeric: 'tabular-nums' }}
@@ -139,7 +126,6 @@ export function StackedBars({
               const cx = PAD.left + bandW * i + bandW / 2
               const total = totals[i]
 
-              // Stack from the bottom up, so the last series lands on top.
               let cursor = PAD.top + plotH
 
               return (
@@ -152,9 +138,6 @@ export function StackedBars({
                   </title>
 
                   {total === 0 ? (
-                    // A gap would read as "no data". The server emits explicit
-                    // zeros for quiet minutes, so this has to read as
-                    // "measured, and it was nothing".
                     <line
                       x1={cx - barW / 2}
                       x2={cx + barW / 2}
@@ -189,7 +172,7 @@ export function StackedBars({
                   {i % every === 0 && (
                     <text
                       x={cx}
-                      y={height - 6}
+                      y={HEIGHT - 6}
                       textAnchor="middle"
                       fontSize={10}
                       style={{ fill: 'var(--mui-palette-text-secondary)' }}
@@ -202,7 +185,7 @@ export function StackedBars({
             })}
           </svg>
         )}
-        {width === 0 && <Box sx={{ height }} />}
+        {width === 0 && <Box sx={{ height: HEIGHT }} />}
       </Box>
 
       <Stack direction="row" spacing={2} useFlexGap sx={{ flexWrap: 'wrap', mt: 1 }}>
@@ -216,10 +199,6 @@ export function StackedBars({
         ))}
       </Stack>
 
-      {/*
-        role="img" makes the SVG opaque to screen readers, so the numbers have
-        to exist somewhere reachable. The chart this replaced had no equivalent.
-      */}
       <Box component="table" sx={visuallyHidden}>
         <caption>{label}</caption>
         <thead>

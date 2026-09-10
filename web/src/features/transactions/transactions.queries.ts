@@ -17,7 +17,6 @@ export function useCreateTransaction() {
   return useMutation({
     mutationFn: (body: CreateTransactionRequest) => transactionsApi.create(body),
     onSuccess: () => {
-      // A transaction moves the account balance, so both trees are stale.
       queryClient.invalidateQueries({ queryKey: qk.transactions.all })
       queryClient.invalidateQueries({ queryKey: qk.accounts.all })
     },

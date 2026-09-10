@@ -2,12 +2,6 @@ import { useEffect, useState } from 'react'
 import { Alert, AlertTitle, Collapse } from '@mui/material'
 import { useRateLimit } from '@/lib/rateLimit'
 
-/**
- * Shown when the guard refuses one of our own ledger requests.
- *
- * The /ops console is outside the guarded group, so this only ever fires from
- * ledger traffic, which is the intended lesson rather than a bug.
- */
 export function RateLimitBanner() {
   const { until } = useRateLimit()
   const [remaining, setRemaining] = useState(0)
@@ -27,11 +21,6 @@ export function RateLimitBanner() {
 
   return (
     <Collapse in={Boolean(until) && remaining > 0}>
-      {/*
-        error, not warning: the guard refusing our own request is a fault, and
-        fault is what carries the RGB split. `warning` is Hot Trace, which is
-        spoken for by the vulnerable-mode chip.
-      */}
       <Alert
         severity="error"
         sx={{
@@ -47,10 +36,4 @@ export function RateLimitBanner() {
       </Alert>
     </Collapse>
   )
-}
-
-/** True while a block is active; used to disable mutation buttons. */
-export function useIsRateLimited(): boolean {
-  const { until } = useRateLimit()
-  return Boolean(until && until > Date.now())
 }

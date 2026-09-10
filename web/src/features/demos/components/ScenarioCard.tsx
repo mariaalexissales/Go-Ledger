@@ -16,8 +16,6 @@ export function ScenarioCard({
   disabled: boolean
   vulnerableMode: boolean
 }) {
-  // The spoof scenario still runs in hardened mode. Running it twice is the
-  // whole point, so this is a note rather than a block.
   const modeMismatch = meta.requires_vulnerable_mode && !vulnerableMode
 
   return (

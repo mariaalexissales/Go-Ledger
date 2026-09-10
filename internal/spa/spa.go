@@ -1,10 +1,8 @@
-// Package spa serves the built React console.
+// Package spa serves the built React console, embedded or from disk.
 //
-// The bundle can come from three places: embedded in the binary (build with
-// -tags embed_spa), read from disk via SPA_DIR, or not at all, in which case a
-// placeholder explains how to build it. The build tag matters because
-// //go:embed fails at compile time when the directory is missing, and that would
-// break `go build ./...` for anyone who has not run npm first.
+// The embed sits behind the embed_spa build tag because //go:embed fails at
+// compile time when dist/ is missing, which would break `go build ./...` for
+// anyone who has not run npm first.
 package spa
 
 import (
@@ -19,8 +17,6 @@ import (
 	"go-ledger/internal/httpx"
 )
 
-// Resolve picks a source for the built assets. dir wins when set, so a
-// production bundle can be smoke-tested without rebuilding the binary.
 func Resolve(dir string) (fs.FS, bool) {
 	if dir != "" {
 		if _, err := os.Stat(path.Join(dir, "index.html")); err == nil {
@@ -32,10 +28,6 @@ func Resolve(dir string) (fs.FS, bool) {
 	return embedded()
 }
 
-// Handler serves the SPA with a history fallback: any path that is not a real
-// file returns index.html with a 200, because the client-side router owns those
-// routes. API paths never reach here, since /api and /ops set their own JSON
-// NotFound handlers before being mounted.
 func Handler(fsys fs.FS) http.Handler {
 	fileServer := http.FileServer(http.FS(fsys))
 
@@ -64,9 +56,6 @@ func Handler(fsys fs.FS) http.Handler {
 			return
 		}
 
-		// Vite emits content-hashed filenames under assets/, so those are safe
-		// to cache forever. index.html must never be cached or a deploy would
-		// keep pointing at the old bundle.
 		if strings.HasPrefix(name, "assets/") {
 			w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
 		} else {
@@ -94,8 +83,6 @@ func serveIndex(w http.ResponseWriter, fsys fs.FS) {
 	}
 }
 
-// PlaceholderHandler stands in when no bundle is available, so hitting the root
-// explains what to do instead of returning a bare 404.
 func PlaceholderHandler() http.Handler {
 	const page = `<!doctype html>
 <meta charset="utf-8">

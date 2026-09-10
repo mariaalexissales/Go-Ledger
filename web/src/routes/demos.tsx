@@ -1,4 +1,3 @@
-import { useState } from 'react'
 import { createFileRoute } from '@tanstack/react-router'
 import { useQuery } from '@tanstack/react-query'
 import {
@@ -30,7 +29,6 @@ import { EventFeed } from '@/features/security/components/EventFeed'
 import { useEventStream } from '@/features/security/useEventStream'
 import { ErrorState, LoadingRows } from '@/components/feedback/States'
 import { REPLAY } from '@/replay/mode'
-import type { DemoResult } from '@/features/demos/demos.types'
 
 export const Route = createFileRoute('/demos')({ component: DemosPage })
 
@@ -42,20 +40,12 @@ function DemosPage() {
   const setMode = useSetClientIPMode()
   const { events, clear } = useEventStream()
 
-  const [result, setResult] = useState<DemoResult | null>(null)
-  const [runningId, setRunningId] = useState<string | null>(null)
-
   const vulnerableMode = config.data?.client_ip_mode === 'xff-trust-all'
+  const result = runDemo.isPending ? undefined : runDemo.data
 
   const handleRun = (id: string) => {
-    setRunningId(id)
-    setResult(null)
     clear()
-
-    runDemo.mutate(id, {
-      onSuccess: setResult,
-      onSettled: () => setRunningId(null),
-    })
+    runDemo.mutate(id)
   }
 
   if (demos.isPending) return <LoadingRows rows={3} />
@@ -83,8 +73,8 @@ function DemosPage() {
           <FormControlLabel
             control={
               <Switch
-                checked={Boolean(vulnerableMode)}
-                disabled={!config.data?.mutable || setMode.isPending || Boolean(runningId)}
+                checked={vulnerableMode}
+                disabled={!config.data?.mutable || setMode.isPending || runDemo.isPending}
                 onChange={(e) => setMode.mutate(e.target.checked ? 'xff-trust-all' : 'remote-addr')}
               />
             }
@@ -117,9 +107,9 @@ function DemosPage() {
               onClick={() => {
                 resetEvents.mutate()
                 clear()
-                setResult(null)
+                runDemo.reset()
               }}
-              disabled={resetEvents.isPending || Boolean(runningId)}
+              disabled={resetEvents.isPending || runDemo.isPending}
             >
               {REPLAY ? 'Clear feed' : 'Clear log'}
             </Button>
@@ -138,15 +128,15 @@ function DemosPage() {
           <ScenarioCard
             key={meta.id}
             meta={meta}
-            vulnerableMode={Boolean(vulnerableMode)}
-            running={runningId === meta.id}
-            disabled={Boolean(runningId)}
+            vulnerableMode={vulnerableMode}
+            running={runDemo.isPending && runDemo.variables === meta.id}
+            disabled={runDemo.isPending}
             onRun={() => handleRun(meta.id)}
           />
         ))}
       </Box>
 
-      {runningId && <LinearProgress />}
+      {runDemo.isPending && <LinearProgress />}
 
       {runDemo.isError && <ErrorState error={runDemo.error} />}
 
@@ -173,13 +163,6 @@ function DemosPage() {
               <RunTimeline result={result} />
               <Divider />
               <CardContent>
-                {/*
-                  The one gold element in the app. Gold is capped at once per
-                  screen, so it goes to the single most useful thing on the
-                  page: the sentence saying what the run proved. It is a
-                  variant rather than a severity because no MUI severity is
-                  gold, and leaving it as info or warning let it drift.
-                */}
                 <Alert variant="verdict" icon={false}>
                   <AlertTitle>Verdict</AlertTitle>
                   {result.summary.verdict}

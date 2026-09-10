@@ -1,4 +1,3 @@
-/** Mirrors ops.EventDTO. `action_type` is pre-split into method + path. */
 export interface SecurityEvent {
   id: number
   timestamp: string
@@ -14,12 +13,12 @@ export interface EventListParams {
   limit?: number
   offset?: number
   flag_status?: string
-  /** Comma-separated set, so the demos page can scope the feed to one run. */
   ip_address?: string
+  // Served by the Go handler and the replay transport; no UI sends it yet.
   action_type?: string
 }
 
-export interface LimiterPolicy {
+interface LimiterPolicy {
   limit: number
   window: string
   block_period: string
@@ -27,7 +26,6 @@ export interface LimiterPolicy {
 
 export type ClientIPMode = 'xff-trust-all' | 'remote-addr'
 
-/** Mirrors ops.configResponse. */
 export interface OpsConfig {
   client_ip_mode: ClientIPMode
   rate_limit: LimiterPolicy
@@ -56,7 +54,6 @@ interface BlockedIp {
   until: string
 }
 
-/** Mirrors ops.statsResponse. */
 export interface SecurityStats {
   window: string
   totals: { ALLOWED: number; BLOCKED: number }

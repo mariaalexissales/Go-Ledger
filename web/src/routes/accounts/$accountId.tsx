@@ -16,8 +16,9 @@ import AddIcon from '@mui/icons-material/Add'
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
 import { accountsQueries } from '@/features/accounts/accounts.queries'
 import { CreateTransactionDialog } from '@/features/transactions/components/CreateTransactionDialog'
+import { amountColumn, idColumn, postedColumn } from '@/features/transactions/transactions.columns'
 import { ErrorState, LoadingRows } from '@/components/feedback/States'
-import { useIsRateLimited } from '@/components/feedback/RateLimitBanner'
+import { useIsRateLimited } from '@/lib/rateLimit'
 import { formatDateTime, formatMoney } from '@/lib/format'
 import type { Transaction } from '@/features/transactions/transactions.types'
 
@@ -39,25 +40,7 @@ function AccountDetailPage() {
     }),
   )
 
-  const columns: Column<Transaction>[] = [
-    { key: 'id', header: 'ID', width: 90 },
-    {
-      key: 'amount',
-      header: 'Amount',
-      width: 160,
-      align: 'right',
-      render: (row) => (
-        <Box component="span" sx={{ color: (row.amount ?? 0) < 0 ? 'error.main' : 'success.main' }}>
-          {formatMoney(row.amount)}
-        </Box>
-      ),
-    },
-    {
-      key: 'timestamp',
-      header: 'Posted',
-      format: (value: string) => formatDateTime(value),
-    },
-  ]
+  const columns: Column<Transaction>[] = [idColumn, amountColumn, postedColumn]
 
   if (account.isPending) return <LoadingRows rows={3} />
   if (account.isError) return <ErrorState error={account.error} onRetry={() => account.refetch()} />
