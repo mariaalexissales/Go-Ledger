@@ -28,6 +28,10 @@ recordings of real runs, so there's no live server behind it.
 - **Migrations fail halfway.** Backfill before `SET NOT NULL`, or golang-migrate
   marks the schema dirty and every boot after that fails.
 
+I also run Semgrep on every pull request through the Semgrep Cloud Platform app. It
+helps me see my own vulnerabilities, learn what each finding means, and patch it
+out.
+
 I used Claude as a tutor and pair programmer on this: explaining concepts, building
 study guides, reviewing my code, and writing some of it, like the fix for deleting
 transactions.
