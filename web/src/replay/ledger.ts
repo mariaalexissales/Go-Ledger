@@ -98,7 +98,9 @@ class ReplayLedger {
     const index = this.transactions.findIndex((transaction) => transaction.id === id)
     if (index === -1) return false
 
-    this.transactions.splice(index, 1)
+    const [removed] = this.transactions.splice(index, 1)
+    const account = this.accounts.find((candidate) => candidate.id === removed.account_id)
+    if (account) account.balance = round2((account.balance ?? 0) - (removed.amount ?? 0))
     return true
   }
 }
