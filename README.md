@@ -1,14 +1,40 @@
 # Go-Ledger
 
-A double-entry-ish ledger API in Go behind an IP rate limiter and a security
-logger, with a React console and demo scenarios that attack it.
+I built Go-Ledger to answer a question I kept running into while learning backend
+security: what does a per-IP rate limiter actually stop, and what gets straight past
+it? It's a small ledger API in Go and Postgres behind a rate limiter and a security
+event logger. A React console watches the guard live, and five scripted scenarios
+attack it.
 
-**[Try the console](https://mariaalexissales.github.io/Go-Ledger/)** — a recording, not a live server.
+The ledger is simple on purpose: one row per transaction and a running balance, not
+real double-entry. The interesting part is the guard in front of it.
 
-> **This project contains a deliberate vulnerability.** `CLIENT_IP_MODE`
-> defaults to `xff-trust-all`, which trusts `X-Forwarded-For` verbatim and makes
-> the rate limiter trivially bypassable. `/ops` has no authentication. See
-> [SECURITY.md](SECURITY.md).
+**[Try the console](https://mariaalexissales.github.io/Go-Ledger/).** It replays
+recordings of real runs, so there's no live server behind it.
+
+## What I learned
+
+- **A rate limiter says yes or no. The log tells you what happened.** Low-and-slow
+  traffic never trips a per-IP limit, and account enumeration only shows up as a
+  pattern in the log.
+- **Deciding the client IP is a trust boundary.** Trusting `X-Forwarded-For` as-is
+  switches the limiter off. I left that hole open on purpose so you can watch it
+  happen, then close it with one toggle.
+- **Logging can't slow down the API.** Security events go through a buffered channel
+  and get written in batches. Anything dropped under load gets counted, not hidden.
+- **Streaming is harder than it looks.** Server-Sent Events, resuming with
+  `Last-Event-ID`, and why `http.Server`'s `WriteTimeout` would kill a long-lived
+  stream.
+- **Migrations fail halfway.** Backfill before `SET NOT NULL`, or golang-migrate
+  marks the schema dirty and every boot after that fails.
+
+I used Claude as a tutor and pair programmer on this: explaining concepts, building
+study guides, reviewing my code, and writing some of it, like the fix for deleting
+transactions.
+
+> **This project has a deliberate vulnerability.** `CLIENT_IP_MODE` defaults to
+> `xff-trust-all`, which trusts `X-Forwarded-For` as-is and makes the rate limiter
+> easy to bypass. `/ops` has no authentication. See [SECURITY.md](SECURITY.md).
 
 ## Quickstart
 
@@ -93,7 +119,7 @@ The three mutating routes exist only when `DEMOS_ENABLED=true`.
 ## Configuration
 
 Every value has a working default except `DATABASE_URL`. The full list lives in
-[.env.example](.env.example) — copy it to `.env`.
+[.env.example](.env.example). Copy it to `.env`.
 
 ```bash
 go run ./cmd/server [serve|seed|reset|healthcheck]
