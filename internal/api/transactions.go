@@ -181,7 +181,14 @@ func (a *API) deleteTransaction(w http.ResponseWriter, r *http.Request) {
 	}
 
 	cmdTag, err := a.DB.Exec(r.Context(), `
-		DELETE FROM transactions WHERE id = $1
+		WITH deleted AS (
+			DELETE FROM transactions WHERE id = $1
+			RETURNING account_id, amount
+		)
+		UPDATE accounts
+		SET balance = accounts.balance - deleted.amount
+		FROM deleted
+		WHERE accounts.id = deleted.account_id
 	`, id)
 
 	if err != nil {
