@@ -16,6 +16,7 @@
     "test:race": "go test ./... -race",
     "fmt": "gofmt -w cmd internal",
     "lint": "golangci-lint run ./...",
+    "scan": "semgrep scan --config p/default --config p/golang --config p/typescript --config p/react --config p/secrets --metrics=off",
     "up": "docker compose up --build -d",
     "down": "docker compose down",
     "record": "go run ./cmd/record",
