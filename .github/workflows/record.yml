@@ -140,6 +140,8 @@ jobs:
           cat server.log || true
 
       - name: Commit the regenerated fixtures
+        env:
+          FAKE_SEED: ${{ inputs.fake_seed }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
@@ -150,7 +152,7 @@ jobs:
             exit 0
           fi
 
-          git commit -m "Re-record demo fixtures (seed ${{ inputs.fake_seed }})"
+          git commit -m "Re-record demo fixtures (seed $FAKE_SEED)"
           # This push will NOT re-trigger pages.yml: GitHub deliberately does not
           # fire workflows for GITHUB_TOKEN pushes. That is what we want here,
           # since this workflow deploys the result itself, below.
