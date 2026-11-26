@@ -35,7 +35,7 @@ func fakeLedger(t *testing.T, accounts, limit int) *httptest.Server {
 
 		if r.URL.Path == "/api/accounts" {
 			w.Header().Set("Content-Type", "application/json")
-			fmt.Fprintf(w, `{"data":[{"id":1}],"total":%d,"limit":1,"offset":0}`, accounts)
+			_, _ = fmt.Fprintf(w, `{"data":[{"id":1}],"total":%d,"limit":1,"offset":0}`, accounts)
 			return
 		}
 
