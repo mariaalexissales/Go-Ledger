@@ -2,6 +2,7 @@ package demo
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"io"
 	"net/http"
@@ -76,10 +77,14 @@ func (c *Client) Sleep(ctx context.Context, d time.Duration) error {
 }
 
 func (c *Client) Get(ctx context.Context, id Identity, path string) (Step, error) {
-	return c.do(ctx, id, http.MethodGet, path)
+	return c.do(ctx, id, http.MethodGet, path, nil)
 }
 
-func (c *Client) do(ctx context.Context, id Identity, method, path string) (Step, error) {
+func (c *Client) GetJSON(ctx context.Context, id Identity, path string, into any) (Step, error) {
+	return c.do(ctx, id, http.MethodGet, path, into)
+}
+
+func (c *Client) do(ctx context.Context, id Identity, method, path string, into any) (Step, error) {
 	if c.budget <= 0 {
 		return Step{}, ErrBudgetExhausted
 	}
@@ -115,7 +120,14 @@ func (c *Client) do(ctx context.Context, id Identity, method, path string) (Step
 	}
 	defer resp.Body.Close()
 
-	_, _ = io.Copy(io.Discard, io.LimitReader(resp.Body, 4096))
+	body := io.LimitReader(resp.Body, 4096)
+	if into != nil && resp.StatusCode == http.StatusOK {
+		if err := json.NewDecoder(body).Decode(into); err != nil {
+			step.Status = resp.StatusCode
+			return c.record(step, err)
+		}
+	}
+	_, _ = io.Copy(io.Discard, body)
 
 	step.Status = resp.StatusCode
 	step.Blocked = resp.StatusCode == http.StatusTooManyRequests

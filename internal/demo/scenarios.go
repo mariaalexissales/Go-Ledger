@@ -37,7 +37,7 @@ var scenarios = []Scenario{
 			Name:             "Account enumeration",
 			Summary:          "Walking account IDs in order, including ones that do not exist.",
 			Teaches:          "Rate limiting catches the volume, but the log is what shows the intent: one IP, sequential IDs, a trail of 404s. That shape is worth alerting on even when nothing is blocked.",
-			Expect:           "A run of 200s and 404s in ID order, then 429s once the limit is reached. Note how obvious the pattern is in the event feed.",
+			Expect:           "One listing request to find where the IDs end, then a run of 200s and 404s in ID order, then 429s once the limit is reached. Note how obvious the pattern is in the event feed.",
 			Tags:             []string{"reconnaissance"},
 			EstimatedSeconds: 3,
 		},
@@ -111,11 +111,22 @@ func runBurst(ctx context.Context, c *Client) error {
 func runEnumeration(ctx context.Context, c *Client) error {
 	const ip = "203.0.113.66"
 
-	scanTo := min(c.Policy().Limit+20, maxRequestsPerRun)
+	limit := c.Policy().Limit
 
-	c.Note(fmt.Sprintf("Scanning /api/accounts/1 through /api/accounts/%d from a single IP.", scanTo))
+	// Scanning from 1 never leaves the seeded range before the limiter cuts in, so no 404s.
+	var listing struct {
+		Total int `json:"total"`
+	}
+	if _, err := c.GetJSON(ctx, As(ip), "/api/accounts?limit=1", &listing); err != nil {
+		return err
+	}
+	start := max(1, listing.Total-limit/2+1)
+	scanTo := start + min(limit+20, maxRequestsPerRun-1) - 1
 
-	for id := 1; id <= scanTo; id++ {
+	c.Note(fmt.Sprintf("The listing reports %d accounts. Scanning /api/accounts/%d through /api/accounts/%d from a single IP.",
+		listing.Total, start, scanTo))
+
+	for id := start; id <= scanTo; id++ {
 		if _, err := c.Get(ctx, As(ip), fmt.Sprintf("/api/accounts/%d", id)); err != nil {
 			return err
 		}
