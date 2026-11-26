@@ -78,7 +78,7 @@ func (c *Console) streamEvents(w http.ResponseWriter, r *http.Request) {
 
 func (c *Console) replay(w http.ResponseWriter, rc *http.ResponseController, r *http.Request, sinceID int64, filter eventFilter) int64 {
 	rows, err := c.db.Query(r.Context(), `
-		SELECT id, timestamp, ip_address, action_type, flag_status
+		SELECT id, timestamp, ip_address, action_type, flag_status, status_code
 		FROM security_events
 		WHERE id > $1
 		ORDER BY id
@@ -93,7 +93,7 @@ func (c *Console) replay(w http.ResponseWriter, rc *http.ResponseController, r *
 	highest := sinceID
 	for rows.Next() {
 		var e SecurityEvent
-		if err := rows.Scan(&e.ID, &e.Timestamp, &e.IPAddress, &e.ActionType, &e.FlagStatus); err != nil {
+		if err := rows.Scan(&e.ID, &e.Timestamp, &e.IPAddress, &e.ActionType, &e.FlagStatus, &e.StatusCode); err != nil {
 			log.Printf("SSE replay scan failed after event %d: %v", highest, err)
 			break
 		}

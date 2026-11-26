@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { IP_RAMP_SIZE } from '@/theme'
-import { formatDuration, formatMoney, ipColor } from './format'
+import { formatDuration, formatMoney, ipColor, statusColor } from './format'
 
 describe('formatMoney', () => {
   it('renders an em dash for absent values rather than $0.00 or NaN', () => {
@@ -60,5 +60,25 @@ describe('ipColor', () => {
   it('spreads different addresses across more than one slot', () => {
     const seen = new Set(Array.from({ length: 40 }, (_, i) => ipColor(`198.51.100.${i}`)))
     expect(seen.size).toBeGreaterThan(1)
+  })
+})
+
+describe('statusColor', () => {
+  it('keeps successes and redirects quiet so the 4xx trail stands out', () => {
+    expect(statusColor(200)).toBe('text.secondary')
+    expect(statusColor(204)).toBe('text.secondary')
+    expect(statusColor(304)).toBe('text.secondary')
+  })
+
+  it('marks client errors, rate limits included, as warnings', () => {
+    expect(statusColor(400)).toBe('warning.main')
+    expect(statusColor(404)).toBe('warning.main')
+    expect(statusColor(429)).toBe('warning.main')
+    expect(statusColor(499)).toBe('warning.main')
+  })
+
+  it('marks server errors as errors', () => {
+    expect(statusColor(500)).toBe('error.main')
+    expect(statusColor(503)).toBe('error.main')
   })
 })

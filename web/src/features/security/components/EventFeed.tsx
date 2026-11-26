@@ -1,5 +1,5 @@
 import { Box, Chip, Stack, Typography } from '@mui/material'
-import { formatTime, ipColor } from '@/lib/format'
+import { formatTime, ipColor, statusColor } from '@/lib/format'
 import type { SecurityEvent } from '../security.types'
 import { EmptyState } from '@/components/feedback/States'
 
@@ -69,6 +69,15 @@ function EventRow({ event }: { event: SecurityEvent }) {
         </Box>
         {event.path}
       </Typography>
+
+      {event.status_code != null && (
+        <Typography
+          component="span"
+          sx={{ fontSize: 12, fontWeight: 600, color: statusColor(event.status_code) }}
+        >
+          {event.status_code}
+        </Typography>
+      )}
 
       <Chip
         size="small"

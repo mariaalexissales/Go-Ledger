@@ -29,6 +29,7 @@ func (sg *SecurityGuard) Recorder() *Recorder   { return sg.recorder }
 
 func (sg *SecurityGuard) SecurityLogger(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		at := time.Now()
 		ip := sg.resolver.ClientIP(r)
 		actionType := r.Method + " " + r.URL.Path
 
@@ -38,20 +39,48 @@ func (sg *SecurityGuard) SecurityLogger(next http.Handler) http.Handler {
 			flagStatus = FlagBlocked
 		}
 
-		sg.recorder.Record(ip, actionType, flagStatus, time.Now())
-
 		w.Header().Set("X-RateLimit-Limit", strconv.Itoa(decision.Limit))
 		w.Header().Set("X-RateLimit-Remaining", strconv.Itoa(decision.Remaining))
 		w.Header().Set("X-RateLimit-Reset", strconv.FormatInt(decision.ResetAt.Unix(), 10))
 
+		sw := &statusWriter{ResponseWriter: w}
+
+		// Deferred so a panicking handler is still logged.
+		defer func() {
+			status := sw.status
+			if status == 0 {
+				status = http.StatusOK
+			}
+			if p := recover(); p != nil {
+				sg.recorder.Record(ip, actionType, flagStatus, http.StatusInternalServerError, at)
+				panic(p)
+			}
+			sg.recorder.Record(ip, actionType, flagStatus, status, at)
+		}()
+
 		if !decision.Allowed {
-			writeRateLimited(w, decision)
+			writeRateLimited(sw, decision)
 			return
 		}
 
-		next.ServeHTTP(w, r)
+		next.ServeHTTP(sw, r)
 	})
 }
+
+type statusWriter struct {
+	http.ResponseWriter
+	status int
+}
+
+func (w *statusWriter) WriteHeader(code int) {
+	if w.status == 0 {
+		w.status = code
+	}
+	w.ResponseWriter.WriteHeader(code)
+}
+
+// Without Unwrap, http.NewResponseController cannot Flush through this writer.
+func (w *statusWriter) Unwrap() http.ResponseWriter { return w.ResponseWriter }
 
 func writeRateLimited(w http.ResponseWriter, decision Decision) {
 	retryAfter := int(math.Ceil(decision.RetryAfter(time.Now()).Seconds()))

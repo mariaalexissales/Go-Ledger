@@ -51,3 +51,9 @@ export function ipColor(ip: string): string {
   }
   return `var(--mui-palette-ipRamp-${Math.abs(hash) % IP_RAMP_SIZE})`
 }
+
+export function statusColor(status: number): string {
+  if (status >= 500) return 'error.main'
+  if (status >= 400) return 'warning.main'
+  return 'text.secondary'
+}
