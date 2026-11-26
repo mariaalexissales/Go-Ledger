@@ -6,6 +6,7 @@ export interface SecurityEvent {
   method: string
   path: string
   flag_status: 'ALLOWED' | 'BLOCKED'
+  status_code?: number | null
   blocked: boolean
 }
 

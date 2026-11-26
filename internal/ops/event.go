@@ -16,6 +16,7 @@ type SecurityEvent struct {
 	IPAddress  string
 	ActionType string
 	FlagStatus string
+	StatusCode *int
 }
 
 type EventDTO struct {
@@ -26,6 +27,7 @@ type EventDTO struct {
 	Method     string    `json:"method"`
 	Path       string    `json:"path"`
 	FlagStatus string    `json:"flag_status"`
+	StatusCode *int      `json:"status_code"`
 	Blocked    bool      `json:"blocked"`
 }
 
@@ -43,6 +45,7 @@ func NewEventDTO(e SecurityEvent) EventDTO {
 		Method:     method,
 		Path:       path,
 		FlagStatus: e.FlagStatus,
+		StatusCode: e.StatusCode,
 		Blocked:    e.FlagStatus == FlagBlocked,
 	}
 }

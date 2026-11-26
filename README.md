@@ -106,17 +106,17 @@ return `{"error": "..."}`. `amount` and `balance` are JSON numbers, not strings.
 
 ### Console: `/ops`, not rate limited, no auth
 
-| Method | Path                         | Notes                                                                                    |
-| ------ | ---------------------------- | ---------------------------------------------------------------------------------------- |
-| GET    | `/ops/config`                | Active IP mode, limiter policy, and how the guard sees _you_                             |
-| GET    | `/ops/events`                | `flag_status`, `ip_address` (comma-separated), `action_type`, `since`, `limit`, `offset` |
-| GET    | `/ops/events/stream`         | SSE, honors `Last-Event-ID`, heartbeats every 15s                                        |
-| GET    | `/ops/stats`                 | `window`, totals, top IPs, per-minute buckets, currently-blocked IPs                     |
-| GET    | `/ops/demos`                 | The five scenarios and their metadata                                                    |
-| POST   | `/ops/demos/{id}/run`        | Returns the full step list and a verdict                                                 |
-| PUT    | `/ops/config/client-ip-mode` | `{"mode": "xff-trust-all" \| "remote-addr"}`                                             |
-| PUT    | `/ops/config/limiter-policy` | `{"limit": 30, "window": "10s", "block_period": "30s"}`                                  |
-| POST   | `/ops/events/reset`          | Truncates `security_events`                                                              |
+| Method | Path                         | Notes                                                                                                   |
+| ------ | ---------------------------- | ------------------------------------------------------------------------------------------------------- |
+| GET    | `/ops/config`                | Active IP mode, limiter policy, and how the guard sees _you_                                            |
+| GET    | `/ops/events`                | `flag_status`, `status_code`, `ip_address` (comma-separated), `action_type`, `since`, `limit`, `offset` |
+| GET    | `/ops/events/stream`         | SSE, honors `Last-Event-ID`, heartbeats every 15s                                                       |
+| GET    | `/ops/stats`                 | `window`, totals, top IPs, per-minute buckets, currently-blocked IPs                                    |
+| GET    | `/ops/demos`                 | The five scenarios and their metadata                                                                   |
+| POST   | `/ops/demos/{id}/run`        | Returns the full step list and a verdict                                                                |
+| PUT    | `/ops/config/client-ip-mode` | `{"mode": "xff-trust-all" \| "remote-addr"}`                                                            |
+| PUT    | `/ops/config/limiter-policy` | `{"limit": 30, "window": "10s", "block_period": "30s"}`                                                 |
+| POST   | `/ops/events/reset`          | Truncates `security_events`                                                                             |
 
 The three mutating routes exist only when `DEMOS_ENABLED=true`.
 

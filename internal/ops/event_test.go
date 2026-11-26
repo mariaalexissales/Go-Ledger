@@ -1,6 +1,11 @@
 package ops
 
-import "testing"
+import (
+	"encoding/json"
+	"net/http"
+	"strings"
+	"testing"
+)
 
 func TestNewEventDTOSplitsActionType(t *testing.T) {
 	tests := []struct {
@@ -64,6 +69,31 @@ func TestNewEventDTOSplitsActionType(t *testing.T) {
 			}
 			if got.ActionType != tt.actionType {
 				t.Errorf("ActionType = %q, want it preserved as %q", got.ActionType, tt.actionType)
+			}
+		})
+	}
+}
+
+func TestEventDTOSerializesStatusCode(t *testing.T) {
+	notFound := http.StatusNotFound
+
+	tests := []struct {
+		name   string
+		status *int
+		want   string
+	}{
+		{name: "a recorded status is a number", status: &notFound, want: `"status_code":404`},
+		{name: "a row from before the column is null", status: nil, want: `"status_code":null`},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			body, err := json.Marshal(NewEventDTO(SecurityEvent{ActionType: "GET /api/accounts/9", StatusCode: tt.status}))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !strings.Contains(string(body), tt.want) {
+				t.Errorf("JSON = %s, want it to contain %s", body, tt.want)
 			}
 		})
 	}

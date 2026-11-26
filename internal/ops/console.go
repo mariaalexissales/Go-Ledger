@@ -3,6 +3,7 @@ package ops
 import (
 	"fmt"
 	"net/http"
+	"strconv"
 	"time"
 
 	"go-ledger/internal/db"
@@ -142,24 +143,32 @@ func (c *Console) listEvents(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	var statusCode *int
+	if v := q.Get("status_code"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil {
+			statusCode = &n
+		}
+	}
+
 	total := 0
 
 	events, err := db.Collect(r.Context(), c.db, `
-		SELECT id, timestamp, ip_address, action_type, flag_status, COUNT(*) OVER() AS total
+		SELECT id, timestamp, ip_address, action_type, flag_status, status_code, COUNT(*) OVER() AS total
 		FROM security_events
 		WHERE ($1 = '' OR flag_status = $1)
 		  AND (cardinality($2::varchar[]) = 0 OR ip_address = ANY($2::varchar[]))
 		  AND ($3 = '' OR action_type ILIKE '%' || $3 || '%')
 		  AND ($4::timestamptz IS NULL OR timestamp >= $4::timestamptz)
+		  AND ($7::int IS NULL OR status_code = $7::int)
 		ORDER BY timestamp DESC, id DESC
 		LIMIT $5 OFFSET $6
 	`, func(row pgx.CollectableRow) (EventDTO, error) {
 		var e SecurityEvent
-		if err := row.Scan(&e.ID, &e.Timestamp, &e.IPAddress, &e.ActionType, &e.FlagStatus, &total); err != nil {
+		if err := row.Scan(&e.ID, &e.Timestamp, &e.IPAddress, &e.ActionType, &e.FlagStatus, &e.StatusCode, &total); err != nil {
 			return EventDTO{}, err
 		}
 		return NewEventDTO(e), nil
-	}, q.Get("flag_status"), ips, q.Get("action_type"), since, page.Limit, page.Offset)
+	}, q.Get("flag_status"), ips, q.Get("action_type"), since, page.Limit, page.Offset, statusCode)
 
 	if err != nil {
 		httpx.WriteServerError(w, r, "failed to list security events", err)

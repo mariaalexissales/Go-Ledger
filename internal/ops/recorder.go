@@ -35,12 +35,13 @@ func NewRecorder(db *pgxpool.Pool, hub *Hub) *Recorder {
 	}
 }
 
-func (r *Recorder) Record(ip, actionType, flagStatus string, at time.Time) {
+func (r *Recorder) Record(ip, actionType, flagStatus string, statusCode int, at time.Time) {
 	event := SecurityEvent{
 		Timestamp:  at,
 		IPAddress:  ip,
 		ActionType: actionType,
 		FlagStatus: flagStatus,
+		StatusCode: &statusCode,
 	}
 
 	select {
@@ -107,22 +108,24 @@ func (r *Recorder) flush(batch []SecurityEvent) {
 	actions := make([]string, len(batch))
 	flags := make([]string, len(batch))
 	times := make([]time.Time, len(batch))
+	statuses := make([]*int, len(batch))
 
 	for i, event := range batch {
 		ips[i] = event.IPAddress
 		actions[i] = event.ActionType
 		flags[i] = event.FlagStatus
 		times[i] = event.Timestamp
+		statuses[i] = event.StatusCode
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), recorderFlushTimeout)
 	defer cancel()
 
 	rows, err := r.db.Query(ctx, `
-		INSERT INTO security_events (ip_address, action_type, flag_status, timestamp)
-		SELECT * FROM unnest($1::varchar[], $2::varchar[], $3::varchar[], $4::timestamptz[])
-		RETURNING id, ip_address, action_type, flag_status, timestamp
-	`, ips, actions, flags, times)
+		INSERT INTO security_events (ip_address, action_type, flag_status, timestamp, status_code)
+		SELECT * FROM unnest($1::varchar[], $2::varchar[], $3::varchar[], $4::timestamptz[], $5::smallint[])
+		RETURNING id, ip_address, action_type, flag_status, timestamp, status_code
+	`, ips, actions, flags, times, statuses)
 
 	if err != nil {
 		r.failed.Add(int64(len(batch)))
@@ -140,6 +143,7 @@ func (r *Recorder) flush(batch []SecurityEvent) {
 			&event.ActionType,
 			&event.FlagStatus,
 			&event.Timestamp,
+			&event.StatusCode,
 		); err != nil {
 			r.failed.Add(1)
 			continue
