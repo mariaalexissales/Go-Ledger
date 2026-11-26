@@ -11,6 +11,10 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: zap-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   zap:
     runs-on: ubuntu-latest
@@ -50,7 +54,7 @@ jobs:
           npm ci
           npm run build
 
-      # Building first means the backgrounded process is the server itself.
+      # Not `go run`: it forks a child, so $! would be the wrong pid.
       - name: Build the server
         run: go build -o bin/server ./cmd/server
 
@@ -94,6 +98,15 @@ jobs:
           allow_issue_writing: false
           fail_action: true
           artifact_name: zap-report
+
+      - name: Add the ZAP report to the job summary
+        if: always()
+        run: |
+          if [ -f report_md.md ]; then
+            cat report_md.md >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "No ZAP report was produced." >> "$GITHUB_STEP_SUMMARY"
+          fi
 
       - name: Stop the API
         if: always()
