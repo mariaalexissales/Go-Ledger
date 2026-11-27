@@ -33,6 +33,7 @@ func NewRouter(d Deps) http.Handler {
 
 	r.Use(middleware.RequestID)
 	r.Use(middleware.Recoverer)
+	r.Use(httpx.SecurityHeaders)
 
 	// Deliberately NOT middleware.RealIP: it would rewrite RemoteAddr from
 	// X-Forwarded-For, turning remote-addr into xff-trust-all and making
