@@ -41,9 +41,11 @@ declare module '@tanstack/react-router' {
   }
 }
 
+const cspNonce = document.querySelector<HTMLScriptElement>('script[nonce]')?.nonce
+
 const emotionCache = createCache({
   key: 'css',
-  nonce: document.querySelector<HTMLScriptElement>('script[nonce]')?.nonce || undefined,
+  nonce: cspNonce && cspNonce !== '__CSP_NONCE__' ? cspNonce : undefined,
 })
 
 createRoot(document.getElementById('root')!).render(

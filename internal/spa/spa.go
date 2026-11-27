@@ -38,7 +38,7 @@ func Handler(fsys fs.FS) http.Handler {
 		}
 
 		name := strings.TrimPrefix(path.Clean(r.URL.Path), "/")
-		if name == "" || name == "." || name == "index.html" {
+		if name == "" || name == "." || strings.EqualFold(name, "index.html") {
 			serveIndex(w, r, fsys)
 			return
 		}

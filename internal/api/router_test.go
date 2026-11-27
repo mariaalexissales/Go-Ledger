@@ -109,7 +109,7 @@ func TestIndexCarriesThePolicyNonce(t *testing.T) {
 	srv := newTestRouter(t)
 	seen := map[string]bool{}
 
-	for _, p := range []string{"/", "/index.html", "/security", "/security"} {
+	for _, p := range []string{"/", "/index.html", "/Index.HTML", "/security", "/security"} {
 		resp, err := http.Get(srv.URL + p)
 		if err != nil {
 			t.Fatalf("GET %s: %v", p, err)
@@ -128,6 +128,26 @@ func TestIndexCarriesThePolicyNonce(t *testing.T) {
 			t.Errorf("GET %s: nonce %q was reused", p, nonce)
 		}
 		seen[nonce] = true
+	}
+}
+
+func TestPlaceholderPageCarriesThePolicyNonce(t *testing.T) {
+	srv := httptest.NewServer(httpx.SecurityHeaders(spa.PlaceholderHandler()))
+	t.Cleanup(srv.Close)
+
+	resp, err := http.Get(srv.URL + "/")
+	if err != nil {
+		t.Fatal(err)
+	}
+	body, err := io.ReadAll(resp.Body)
+	resp.Body.Close()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	nonce := assertSecurityHeaders(t, resp.Header)
+	if want := `<style nonce="` + nonce + `">`; !strings.Contains(string(body), want) {
+		t.Errorf("placeholder page does not contain %q", want)
 	}
 }
 
@@ -168,7 +188,7 @@ func TestInlineScriptsInIndexHTMLTakeTheNonce(t *testing.T) {
 			inline := regexp.MustCompile(`<(script|style)(\s[^>]*)?>`).FindAllSubmatch(html, -1)
 			for _, tag := range inline {
 				attrs := string(tag[2])
-				if strings.Contains(attrs, "src=") {
+				if regexp.MustCompile(`\ssrc=`).MatchString(attrs) {
 					continue
 				}
 				if !strings.Contains(attrs, `nonce="`+spa.NoncePlaceholder+`"`) {
