@@ -1,5 +1,7 @@
 # Go-Ledger
 
+[![CI](https://github.com/mariaalexissales/Go-Ledger/actions/workflows/ci.yml/badge.svg)](https://github.com/mariaalexissales/Go-Ledger/actions/workflows/ci.yml) [![CodeQL](https://github.com/mariaalexissales/Go-Ledger/actions/workflows/security.yml/badge.svg)](https://github.com/mariaalexissales/Go-Ledger/actions/workflows/security.yml) [![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/mariaalexissales/Go-Ledger/badge)](https://scorecard.dev/viewer/?uri=github.com/mariaalexissales/Go-Ledger) [![Release](https://img.shields.io/github/v/release/mariaalexissales/Go-Ledger)](https://github.com/mariaalexissales/Go-Ledger/releases/latest)
+
 I built Go-Ledger to answer a question I kept running into while learning backend
 security: what does a per-IP rate limiter actually stop, and what gets straight past
 it? It's a small ledger API in Go and Postgres behind a rate limiter and a security
