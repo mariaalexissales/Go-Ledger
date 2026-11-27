@@ -80,6 +80,8 @@ func serveIndex(w http.ResponseWriter, r *http.Request, fsys fs.FS) {
 		return
 	}
 
+	// No ETag or Last-Modified here: a 304 would make the browser reuse a body
+	// carrying an old nonce under this response's new CSP and block everything.
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.Header().Set("Cache-Control", "no-cache")
 	w.WriteHeader(http.StatusOK)
