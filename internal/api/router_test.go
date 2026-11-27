@@ -2,8 +2,7 @@ package api
 
 import (
 	"context"
-	"crypto/sha256"
-	"encoding/base64"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -18,6 +17,10 @@ import (
 	"go-ledger/internal/ops"
 	"go-ledger/internal/spa"
 )
+
+const testIndex = `<!doctype html><script nonce="` + spa.NoncePlaceholder + `">x()</script><div id=root></div>`
+
+var nonceInCSP = regexp.MustCompile(`script-src 'self' 'nonce-([A-Za-z0-9+/=]+)'`)
 
 func newTestRouter(t *testing.T) *httptest.Server {
 	t.Helper()
@@ -34,7 +37,7 @@ func newTestRouter(t *testing.T) *httptest.Server {
 		Guard:   guard,
 		Console: ops.NewConsole(nil, hub, guard, false),
 		SPA: spa.Handler(fstest.MapFS{
-			"index.html":    {Data: []byte("<!doctype html><div id=root></div>")},
+			"index.html":    {Data: []byte(testIndex)},
 			"assets/app.js": {Data: []byte("console.log(1)")},
 		}),
 	}))
@@ -43,11 +46,18 @@ func newTestRouter(t *testing.T) *httptest.Server {
 	return srv
 }
 
-func assertSecurityHeaders(t *testing.T, h http.Header) {
+func assertSecurityHeaders(t *testing.T, h http.Header) string {
 	t.Helper()
 
+	csp := h.Get("Content-Security-Policy")
+	m := nonceInCSP.FindStringSubmatch(csp)
+	if m == nil {
+		t.Fatalf("Content-Security-Policy %q carries no nonce", csp)
+	}
+	nonce := m[1]
+
 	want := map[string]string{
-		"Content-Security-Policy":      httpx.ContentSecurityPolicy,
+		"Content-Security-Policy":      httpx.ContentSecurityPolicy(nonce),
 		"X-Content-Type-Options":       "nosniff",
 		"X-Frame-Options":              "DENY",
 		"Referrer-Policy":              "no-referrer",
@@ -61,6 +71,11 @@ func assertSecurityHeaders(t *testing.T, h http.Header) {
 			t.Errorf("%s = %q, want %q", name, got, value)
 		}
 	}
+	if strings.Contains(csp, "unsafe-inline") {
+		t.Errorf("Content-Security-Policy %q still allows unsafe-inline", csp)
+	}
+
+	return nonce
 }
 
 func TestSecurityHeadersOnEveryRoute(t *testing.T) {
@@ -72,6 +87,7 @@ func TestSecurityHeadersOnEveryRoute(t *testing.T) {
 		"/ops/config",
 		"/ops/nope",
 		"/",
+		"/index.html",
 		"/security",
 		"/assets/app.js",
 	}
@@ -86,6 +102,32 @@ func TestSecurityHeadersOnEveryRoute(t *testing.T) {
 
 			assertSecurityHeaders(t, resp.Header)
 		})
+	}
+}
+
+func TestIndexCarriesThePolicyNonce(t *testing.T) {
+	srv := newTestRouter(t)
+	seen := map[string]bool{}
+
+	for _, p := range []string{"/", "/index.html", "/security", "/security"} {
+		resp, err := http.Get(srv.URL + p)
+		if err != nil {
+			t.Fatalf("GET %s: %v", p, err)
+		}
+		body, err := io.ReadAll(resp.Body)
+		resp.Body.Close()
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		nonce := assertSecurityHeaders(t, resp.Header)
+		if want := `<script nonce="` + nonce + `">`; !strings.Contains(string(body), want) {
+			t.Errorf("GET %s: body %q does not contain %q", p, body, want)
+		}
+		if seen[nonce] {
+			t.Errorf("GET %s: nonce %q was reused", p, nonce)
+		}
+		seen[nonce] = true
 	}
 }
 
@@ -112,7 +154,7 @@ func TestSecurityHeadersKeepTheEventStreamFlushing(t *testing.T) {
 	assertSecurityHeaders(t, resp.Header)
 }
 
-func TestThemeScriptHashMatchesIndexHTML(t *testing.T) {
+func TestInlineScriptsInIndexHTMLTakeTheNonce(t *testing.T) {
 	for _, file := range []string{"../../web/index.html", "../spa/dist/index.html"} {
 		t.Run(file, func(t *testing.T) {
 			html, err := os.ReadFile(file)
@@ -123,18 +165,15 @@ func TestThemeScriptHashMatchesIndexHTML(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			scripts := regexp.MustCompile(`(?s)<script>(.*?)</script>`).FindAllSubmatch(html, -1)
-			if len(scripts) != 1 {
-				t.Fatalf("found %d inline scripts, want 1", len(scripts))
-			}
-
-			sum := sha256.Sum256(scripts[0][1])
-			want := "'sha256-" + base64.StdEncoding.EncodeToString(sum[:]) + "'"
-			if httpx.ThemeScriptHash != want {
-				t.Fatalf("ThemeScriptHash = %s, want %s", httpx.ThemeScriptHash, want)
-			}
-			if !strings.Contains(httpx.ContentSecurityPolicy, want) {
-				t.Fatal("script-src does not carry the theme script hash")
+			inline := regexp.MustCompile(`<(script|style)(\s[^>]*)?>`).FindAllSubmatch(html, -1)
+			for _, tag := range inline {
+				attrs := string(tag[2])
+				if strings.Contains(attrs, "src=") {
+					continue
+				}
+				if !strings.Contains(attrs, `nonce="`+spa.NoncePlaceholder+`"`) {
+					t.Errorf("inline <%s%s> has no nonce placeholder, the policy will block it", tag[1], attrs)
+				}
 			}
 		})
 	}

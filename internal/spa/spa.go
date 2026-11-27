@@ -38,13 +38,14 @@ func Handler(fsys fs.FS) http.Handler {
 		}
 
 		name := strings.TrimPrefix(path.Clean(r.URL.Path), "/")
-		if name == "" || name == "." {
-			name = "index.html"
+		if name == "" || name == "." || name == "index.html" {
+			serveIndex(w, r, fsys)
+			return
 		}
 
 		file, err := fsys.Open(name)
 		if err != nil {
-			serveIndex(w, fsys)
+			serveIndex(w, r, fsys)
 			return
 		}
 
@@ -52,7 +53,7 @@ func Handler(fsys fs.FS) http.Handler {
 		file.Close()
 
 		if statErr != nil || info.IsDir() {
-			serveIndex(w, fsys)
+			serveIndex(w, r, fsys)
 			return
 		}
 
@@ -66,19 +67,28 @@ func Handler(fsys fs.FS) http.Handler {
 	})
 }
 
-func serveIndex(w http.ResponseWriter, fsys fs.FS) {
-	file, err := fsys.Open("index.html")
+const NoncePlaceholder = "__CSP_NONCE__"
+
+func withNonce(html string, r *http.Request) string {
+	return strings.ReplaceAll(html, NoncePlaceholder, httpx.CSPNonce(r.Context()))
+}
+
+func serveIndex(w http.ResponseWriter, r *http.Request, fsys fs.FS) {
+	html, err := fs.ReadFile(fsys, "index.html")
 	if err != nil {
 		httpx.WriteError(w, http.StatusNotFound, "not found")
 		return
 	}
-	defer file.Close()
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.Header().Set("Cache-Control", "no-cache")
 	w.WriteHeader(http.StatusOK)
 
-	if _, err := io.Copy(w, file); err != nil {
+	if r.Method == http.MethodHead {
+		return
+	}
+
+	if _, err := io.WriteString(w, withNonce(string(html), r)); err != nil {
 		log.Printf("spa: serving index.html failed: %v", err)
 	}
 }
@@ -87,7 +97,7 @@ func PlaceholderHandler() http.Handler {
 	const page = `<!doctype html>
 <meta charset="utf-8">
 <title>go-ledger</title>
-<style>body{font-family:system-ui,sans-serif;max-width:40rem;margin:4rem auto;padding:0 1rem;line-height:1.6}code{background:#eee;padding:.15rem .35rem;border-radius:4px}</style>
+<style nonce="` + NoncePlaceholder + `">body{font-family:system-ui,sans-serif;max-width:40rem;margin:4rem auto;padding:0 1rem;line-height:1.6}code{background:#eee;padding:.15rem .35rem;border-radius:4px}</style>
 <h1>go-ledger API is running</h1>
 <p>The React console is not bundled into this binary. Either:</p>
 <ul>
@@ -100,6 +110,6 @@ func PlaceholderHandler() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		w.WriteHeader(http.StatusOK)
-		_, _ = io.WriteString(w, page)
+		_, _ = io.WriteString(w, withNonce(page, r))
 	})
 }
