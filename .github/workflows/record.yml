@@ -23,17 +23,17 @@ on:
       - cmd/record/**
 
 permissions:
-  contents: write # push the regenerated fixtures to a non-main branch
+  contents: read
 
-# Shared with pages.yml so a recording and a push-triggered deploy queue instead
-# of racing each other at the Pages API.
 concurrency:
-  group: pages
+  group: record-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
   record:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
 
     services:
       postgres:
