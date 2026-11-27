@@ -5,6 +5,8 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { RouterProvider, createRouter } from '@tanstack/react-router'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import createCache from '@emotion/cache'
+import { CacheProvider } from '@emotion/react'
 import { ThemeProvider } from '@mui/material/styles'
 import CssBaseline from '@mui/material/CssBaseline'
 import { routeTree } from './routeTree.gen'
@@ -39,13 +41,22 @@ declare module '@tanstack/react-router' {
   }
 }
 
+const cspNonce = document.querySelector<HTMLScriptElement>('script[nonce]')?.nonce
+
+const emotionCache = createCache({
+  key: 'css',
+  nonce: cspNonce && cspNonce !== '__CSP_NONCE__' ? cspNonce : undefined,
+})
+
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <ThemeProvider theme={theme} defaultMode="dark">
-      <CssBaseline enableColorScheme />
-      <QueryClientProvider client={queryClient}>
-        <RouterProvider router={router} />
-      </QueryClientProvider>
-    </ThemeProvider>
+    <CacheProvider value={emotionCache}>
+      <ThemeProvider theme={theme} defaultMode="dark">
+        <CssBaseline enableColorScheme />
+        <QueryClientProvider client={queryClient}>
+          <RouterProvider router={router} />
+        </QueryClientProvider>
+      </ThemeProvider>
+    </CacheProvider>
   </StrictMode>,
 )
