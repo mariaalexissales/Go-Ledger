@@ -33,7 +33,7 @@ jobs:
   record:
     runs-on: ubuntu-latest
     permissions:
-      contents: write
+      contents: read
 
     services:
       postgres:
@@ -52,10 +52,19 @@ jobs:
           --health-retries 10
 
     steps:
+      - name: Mint the bot token
+        id: app-token
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
+        with:
+          client-id: ${{ secrets.BOT_CLIENT_ID }}
+          private-key: ${{ secrets.BOT_PRIVATE_KEY }}
+
       # A branch, not the default detached HEAD, because the commit step pushes.
+      # The App token, because a GITHUB_TOKEN push triggers no checks on the PR.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ github.ref_name }}
+          token: ${{ steps.app-token.outputs.token }}
 
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
@@ -155,14 +164,6 @@ jobs:
 
           git commit -m "chore(replay): re-record demo fixtures"
           git push
-
-      - name: Mint the bot token
-        id: app-token
-        if: github.ref_name == 'main'
-        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
-        with:
-          client-id: ${{ secrets.BOT_CLIENT_ID }}
-          private-key: ${{ secrets.BOT_PRIVATE_KEY }}
 
       - name: Open the fixtures pull request
         if: github.ref_name == 'main'
