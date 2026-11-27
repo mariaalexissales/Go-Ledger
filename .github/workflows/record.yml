@@ -4,8 +4,8 @@ name: Record demo data
 #
 # The public site is a replay of real runs: this workflow stands up Postgres,
 # boots the API, seeds the ledger, executes every scenario in both client-IP
-# modes, and commits the captured fixtures back to the repo. Press "Run workflow"
-# after changing a scenario and the public demo catches up.
+# modes, and commits the captured fixtures back to the repo. On main it opens a
+# pull request through a bot App; merging it deploys through pages.yml.
 on:
   workflow_dispatch:
     inputs:
@@ -13,25 +13,27 @@ on:
         description: Seed for the fake ledger. Change it to deliberately reroll the 50 accounts.
         default: "20260808"
         required: true
-      deploy:
-        description: Deploy to GitHub Pages after recording
-        type: boolean
-        default: true
+  push:
+    branches: [main]
+    paths:
+      - internal/demo/**
+      - internal/ops/**
+      - internal/seed/**
+      - internal/db/migrations/**
+      - cmd/record/**
 
 permissions:
-  contents: write # commit the regenerated fixtures back to the branch
-  pages: write
-  id-token: write
+  contents: read
 
-# Shared with pages.yml so a recording and a push-triggered deploy queue instead
-# of racing each other at the Pages API.
 concurrency:
-  group: pages
+  group: record-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
   record:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
 
     services:
       postgres:
@@ -70,7 +72,7 @@ jobs:
           DATABASE_URL: postgres://postgres:password@localhost:5432/go_ledger_db?sslmode=disable
           PORT: "8080"
           SEED_ON_START: "true"
-          FAKE_SEED: ${{ inputs.fake_seed }}
+          FAKE_SEED: ${{ inputs.fake_seed || '20260808' }}
           DEMOS_ENABLED: "true"
           OPS_ENABLED: "true"
           CORS_ALLOWED_ORIGINS: ""
@@ -140,8 +142,7 @@ jobs:
           cat server.log || true
 
       - name: Commit the regenerated fixtures
-        env:
-          FAKE_SEED: ${{ inputs.fake_seed }}
+        if: github.ref_name != 'main'
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
@@ -152,22 +153,26 @@ jobs:
             exit 0
           fi
 
-          git commit -m "Re-record demo fixtures (seed $FAKE_SEED)"
-          # This push will NOT re-trigger pages.yml: GitHub deliberately does not
-          # fire workflows for GITHUB_TOKEN pushes. That is what we want here,
-          # since this workflow deploys the result itself, below.
+          git commit -m "chore(replay): re-record demo fixtures"
           git push
 
-      - uses: ./.github/actions/build-pages
-        if: inputs.deploy
+      - name: Mint the bot token
+        id: app-token
+        if: github.ref_name == 'main'
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
+        with:
+          client-id: ${{ secrets.BOT_CLIENT_ID }}
+          private-key: ${{ secrets.BOT_PRIVATE_KEY }}
 
-  deploy:
-    needs: record
-    if: inputs.deploy
-    runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    steps:
-      - id: deployment
-        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1
+      - name: Open the fixtures pull request
+        if: github.ref_name == 'main'
+        uses: peter-evans/create-pull-request@3ffccacd46053766916f087ce41d627c0b8cf2d1 # v8.1.3
+        with:
+          token: ${{ steps.app-token.outputs.token }}
+          branch: bot/re-record-fixtures
+          base: main
+          add-paths: web/public/replay
+          commit-message: "chore(replay): re-record demo fixtures"
+          title: "chore(replay): re-record demo fixtures"
+          body: Fixtures re-recorded after a change to the demo, ops, seed or migrations.
+          delete-branch: true
