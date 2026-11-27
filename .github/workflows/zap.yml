@@ -1,0 +1,116 @@
+name: ZAP baseline scan
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    - cron: "17 4 * * 2"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: zap-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  zap:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: password
+          POSTGRES_DB: go_ledger_db
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d go_ledger_db"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Build the console
+        working-directory: web
+        run: |
+          npm ci
+          npm run build
+
+      # Not `go run`: it forks a child, so $! would be the wrong pid.
+      - name: Build the server
+        run: go build -o bin/server ./cmd/server
+
+      - name: Start the API and wait for it
+        env:
+          DATABASE_URL: postgres://postgres:password@localhost:5432/go_ledger_db?sslmode=disable
+          PORT: "8080"
+          SEED_ON_START: "true"
+          DEMOS_ENABLED: "false"
+          OPS_ENABLED: "true"
+          CLIENT_IP_MODE: remote-addr
+          # Do not lower this: the spiders would be rate limited and the scan would record 429s instead of the app.
+          RATE_LIMIT: "100000"
+          RATE_WINDOW: 10s
+          RATE_BLOCK_PERIOD: 1s
+          SPA_DIR: internal/spa/dist
+          CORS_ALLOWED_ORIGINS: ""
+        run: |
+          ./bin/server > server.log 2>&1 &
+          echo $! > server.pid
+
+          for _ in $(seq 1 30); do
+            if curl -sf http://localhost:8080/health > /dev/null; then
+              echo "API is up"
+              exit 0
+            fi
+            sleep 1
+          done
+
+          echo "::error::API did not become healthy within 30s"
+          cat server.log
+          exit 1
+
+      - name: Run the ZAP baseline scan
+        uses: zaproxy/action-baseline@de8ad967d3548d44ef623df22cf95c3b0baf8b25 # v0.15.0
+        with:
+          token: ${{ github.token }}
+          target: http://localhost:8080
+          rules_file_name: .zap/rules.tsv
+          cmd_options: -I -j
+          allow_issue_writing: false
+          fail_action: true
+          artifact_name: zap-report
+
+      - name: Add the ZAP report to the job summary
+        if: always()
+        run: |
+          if [ -f report_md.md ]; then
+            cat report_md.md >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "No ZAP report was produced." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Stop the API
+        if: always()
+        run: |
+          kill "$(cat server.pid)" 2>/dev/null || true
+          echo "--- server log ---"
+          cat server.log || true
