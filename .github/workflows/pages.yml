@@ -11,11 +11,7 @@ on:
 
 permissions:
   contents: read
-  pages: write
-  id-token: write
 
-# Shared with record.yml so a manual recording and a push-triggered deploy queue
-# instead of racing each other at the Pages API.
 concurrency:
   group: pages
   cancel-in-progress: false
@@ -30,6 +26,9 @@ jobs:
   deploy:
     needs: build
     runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
